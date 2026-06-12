@@ -1,0 +1,14 @@
+tier=medium
+pos_tol=0.01
+rot_tol=0.0872664626
+N=500
+repeat=30
+host_api_total_ms_mean=31.55807556468062
+host_api_total_ms_p50=30.571572999178898
+host_api_total_ms_p95=35.45136254178942
+host_api_total_ms_p99=39.69219257342048
+throughput_targets_per_s=15843.805145063832
+converged=500
+convergence_rate=1.0
+avg_pos_error_m=1.1357505275124439e-07
+avg_rot_error_rad=1.3027209267955122e-07

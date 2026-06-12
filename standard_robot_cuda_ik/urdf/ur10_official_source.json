@@ -1,0 +1,11 @@
+{
+  "source_repo": "https://github.com/UniversalRobots/Universal_Robots_ROS2_Description",
+  "source_ref": "4.3.1",
+  "source_commit": "ae333289875f9ba5a9ea6649a54036efb5ccabee",
+  "generated_from": "urdf/ur.urdf.xacro",
+  "ur_type": "ur10",
+  "joint_limit_params": "config/ur10/joint_limits.yaml",
+  "kinematics_params": "config/ur10/default_kinematics.yaml",
+  "physical_params": "config/ur10/physical_parameters.yaml",
+  "visual_params": "config/ur10/visual_parameters.yaml"
+}

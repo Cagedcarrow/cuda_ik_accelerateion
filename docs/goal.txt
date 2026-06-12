@@ -1,0 +1,1187 @@
+请你阅读/mnt/linuxdata/cuda_ik_accelerateion/docs/PROJECT_OVERVIEW.md，并且按照以下要求
+
+# 任务总目标
+
+在 `/mnt/linuxdata/cuda_ik_accelerateion/` 目录下新建一个独立子项目文件夹，用于完成一套新的标准化 CUDA 批量逆运动学性能研究工作。
+
+新工作的论文核心不再是“自定义 UR10+铲斗装配体狭窄空间轨迹求解”，而是：
+
+**面向标准机械臂批量逆运动学求解的 CUDA 底层优化框架与性能分析。**
+
+核心研究问题是：
+
+**在消费级 NVIDIA RTX 4060 Laptop GPU 上，如何通过 CUDA 底层线程映射、寄存器级小矩阵求解、共享内存布局、常量内存广播、Kernel Fusion、批量任务组织等硬件适配手段，实现机器人批量逆运动学求解的极致性能。**
+
+注意：
+
+本项目不是为了包装“新 IK 算法”，也不是为了证明某个 LM/DLS 参数更优，而是要证明：
+
+**针对机器人 IK 这种小规模、高频、大批量任务，通过 CUDA 底层结构适配，可以比通用求解框架获得更高的单位硬件效率。**
+
+本项目只研究：
+
+1. 批量逆运动学求解；
+2. CUDA 底层性能优化；
+3. 标准机械臂模型上的可复现实验；
+4. 消融实验；
+5. Nsight Compute / Roofline 性能分析；
+6. 7DOF 扩展适配分析。
+
+本项目不研究：
+
+1. 全局路径规划；
+2. 避障路径规划；
+3. 轨迹优化；
+4. 完整运动规划流水线；
+5. MoveIt 规划器性能比较；
+6. 碰撞检测系统。
+
+不要把随机目标点测试写成“路径规划”或“运动规划”，应统一称为：
+
+**随机可达目标位姿集上的批量逆运动学求解性能测试。**
+
+# 一、新建项目目录
+
+请在以下路径新建独立实验项目：
+
+`/mnt/linuxdata/cuda_ik_accelerateion/standard_robot_cuda_ik/`
+
+建议目录结构如下：
+
+```text
+/mnt/linuxdata/cuda_ik_accelerateion/standard_robot_cuda_ik/
+├── README.md
+├── CMakeLists.txt
+├── config/
+│   ├── benchmark.yaml
+│   ├── robots.yaml
+│   └── target_generation.yaml
+├── urdf/
+│   ├── ur10_official.urdf
+│   ├── ur5_official.urdf
+│   └── panda_7dof.urdf
+├── src/
+│   ├── common/
+│   │   ├── robot_model_loader.cpp
+│   │   ├── target_generator.cpp
+│   │   ├── pose_error.cpp
+│   │   ├── seed_generator.cpp
+│   │   └── benchmark_utils.cpp
+│   ├── cuda/
+│   │   ├── cuda_ik_6dof.cu
+│   │   ├── cuda_ik_7dof.cu
+│   │   ├── cuda_ldlt_small_matrix.cuh
+│   │   ├── cuda_padded_matrix.cuh
+│   │   ├── cuda_constant_memory.cuh
+│   │   └── cuda_benchmark_runner.cu
+│   └── cpu_baseline/
+│       ├── kdl_solver.cpp
+│       └── numeric_dls_solver.cpp
+├── include/
+│   └── standard_robot_cuda_ik/
+├── benchmark/
+│   ├── run_all.py
+│   ├── bench_cuda_6dof.py
+│   ├── bench_cuda_7dof.py
+│   ├── bench_curobo.py
+│   ├── bench_pyroki.py
+│   ├── bench_kdl.py
+│   ├── bench_numeric_dls.py
+│   └── compare_results.py
+├── data/
+│   ├── targets/
+│   │   ├── ur10_seed42_N100.csv
+│   │   ├── ur10_seed42_N500.csv
+│   │   ├── ur10_seed42_N1000.csv
+│   │   ├── ur10_seed42_N5000.csv
+│   │   └── panda_seed42_N1000.csv
+│   ├── seeds/
+│   │   ├── ur10_seed42_initial_zero.csv
+│   │   ├── ur10_seed42_initial_home.csv
+│   │   ├── ur10_seed42_initial_random.csv
+│   │   └── ur10_seed42_initial_near_gt.csv
+│   ├── results/
+│   └── profiling/
+├── experiments/
+│   ├── 01_official_ur10_main/
+│   ├── 02_batch_size_scaling/
+│   ├── 03_solver_comparison/
+│   ├── 04_ablation/
+│   ├── 05_roofline/
+│   └── 06_7dof_extension/
+└── docs/
+    ├── logs/
+    └── paper/
+```
+
+如果部分文件夹已有更合适命名，可以调整，但必须保证：
+
+1. 主实验代码独立于旧的自定义铲斗 UR10 工程；
+2. 项目内部日志可写入 `standard_robot_cuda_ik/docs/logs/`；
+3. 最终验收日志统一汇总到 `/mnt/linuxdata/cuda_ik_accelerateion/docs/logs/`；
+4. 新论文 Markdown 统一写入 `/mnt/linuxdata/cuda_ik_accelerateion/docs/paper/`；
+5. 不要同时生成多个版本导致路径混乱。
+
+# 二、主实验改为官方 UR10 模型
+
+## 目标
+
+将主实验对象改为官方标准 UR10 机械臂模型，而不是当前自定义 UR10+铲斗装配体。
+
+要求：
+
+1. 使用标准 UR10 URDF；
+2. 不再使用铲斗 TCP；
+3. 不再使用 wrist_2 负 Z 轴等自定义装配体特性；
+4. 统一所有求解器的机器人模型、TCP、关节限位、目标位姿定义；
+5. 所有求解器必须使用同一批目标位姿数据；
+6. 所有结果必须明确记录模型来源、URDF路径、MD5值、关节链、TCP定义。
+
+## 必须完成的验证
+
+请编写脚本验证：
+
+1. UR10 关节数量是否为 6；
+2. 各关节轴方向；
+3. 各关节原点；
+4. TCP 坐标系；
+5. FK 结果是否与 CPU Eigen/KDL 参考实现一致；
+6. CUDA FK 与 CPU FK 的最大误差；
+7. cuRobo、PyRoki、KDL 等求解器是否使用了完全一致的 URDF 和 TCP。
+
+## 求解器模型一致性处理规则
+
+cuRobo、PyRoki、KDL、TRAC-IK 等求解器可能对 URDF、TCP、joint limits 或 base frame 的解析方式不同。
+
+必须执行以下规则：
+
+1. 若某求解器可以直接使用完全相同 URDF/TCP，则进入主对比表；
+2. 若某求解器需要转换层或适配配置，必须记录转换方法；
+3. 若某求解器无法消除模型差异，只能作为参考实验，不得进入主公平对比表；
+4. 所有模型差异必须写入模型验证报告；
+5. 不能在模型不一致的情况下声称性能比较完全公平。
+
+输出验证报告：
+
+`/mnt/linuxdata/cuda_ik_accelerateion/docs/logs/official_ur10_model_verification.md`
+
+报告必须包含：
+
+1. URDF 路径；
+2. URDF MD5；
+3. 关节表；
+4. TCP 定义；
+5. 关节轴；
+6. 关节限位；
+7. CPU FK 与 CUDA FK 一致性验证；
+8. 各求解器模型一致性检查；
+9. 任何不一致问题及处理方式；
+10. 哪些求解器进入主对比表，哪些只能作为参考结果。
+
+# 三、随机生成可达目标位姿集
+
+## 目标
+
+建立标准化、可复现的目标位姿生成流程。
+
+不是随便在空间中生成点，而是：
+
+**随机生成可达目标位姿集，并进行批量 IK 求解性能测试。**
+
+## 生成原则
+
+1. 固定随机种子，例如 `seed=42`；
+2. 先随机采样关节角 q；
+3. 使用标准 UR10 FK 生成目标位姿 T；
+4. 这样保证目标位姿必然可达；
+5. 所有求解器使用完全相同的目标位姿集；
+6. 保存目标位姿、原始关节角、目标编号；
+7. 所有目标数据保存为 CSV 和 JSON 两种格式；
+8. Markdown 只作为报告，不作为唯一数据源。
+
+## 目标规模
+
+至少生成以下规模：
+
+```text
+N = 100
+N = 500
+N = 1000
+N = 5000
+```
+
+如果运行时间可接受，可增加：
+
+```text
+N = 10000
+```
+
+## 位姿内容
+
+目标数据必须包含：
+
+1. target_id；
+2. q_sampled[6]；
+3. position x,y,z；
+4. rotation matrix 3×3；
+5. quaternion；
+6. homogeneous transform 4×4；
+7. 是否位于关节限位内；
+8. 是否通过 FK 复验。
+
+输出目录：
+
+`/mnt/linuxdata/cuda_ik_accelerateion/standard_robot_cuda_ik/data/targets/`
+
+同时输出说明文档：
+
+`/mnt/linuxdata/cuda_ik_accelerateion/docs/logs/target_generation_seed42.md`
+
+# 四、统一初始种子策略
+
+## 目标
+
+目标位姿相同还不够，IK 初始种子也必须统一，否则不同求解器的收敛率和耗时对比不公平。
+
+必须生成并保存统一初始种子集。
+
+至少包含以下策略：
+
+1. `zero_seed`：所有关节角为 0；
+2. `home_seed`：标准 UR10 home configuration；
+3. `random_seed`：固定随机种子生成；
+4. `near_ground_truth_seed`：从生成目标的原始 q_sampled 加小扰动，仅用于分析，不作为主公平对比默认项。
+
+主公平对比默认使用：
+
+```text
+zero_seed 或 home_seed
+```
+
+多种子实验必须单独列出，不得和单种子实验混合比较。
+
+初始种子文件保存到：
+
+`/mnt/linuxdata/cuda_ik_accelerateion/standard_robot_cuda_ik/data/seeds/`
+
+目标生成报告中必须说明：
+
+1. 使用了哪些初始种子策略；
+2. 主 benchmark 使用哪一种；
+3. 多种子实验是否单独统计；
+4. 各求解器是否实际使用了相同初始种子；
+5. 若某求解器内部强制使用多种子，应记录并在公平性分析中说明。
+
+# 五、主性能对比实验
+
+## 目标
+
+对标准 UR10 批量 IK 求解进行公平 benchmark。
+
+比较对象至少包括：
+
+1. 自研 CUDA 6DOF IK；
+2. cuRobo；
+3. PyRoki；
+4. KDL 或 TRAC-IK；
+5. CPU Numeric DLS baseline。
+
+如果 HJCD-IK 适配成本过高，可标记为 optional，但要说明原因。
+
+## 统一收敛判据
+
+所有求解器必须尽可能使用统一收敛判据。
+
+建议默认：
+
+```text
+position_error < 0.03 m
+orientation_error < 0.5236 rad
+max_iter = 固定值
+```
+
+如果要使用更严格阈值，例如：
+
+```text
+position_error < 0.001 m
+orientation_error < 0.01 rad
+```
+
+必须确保所有求解器都能公平执行，并在报告中说明。
+
+禁止每个求解器使用自己的默认收敛判据后直接比较。
+
+## 三类时间口径
+
+每个求解器必须尽可能区分以下三类时间：
+
+```text
+kernel_time_only
+gpu_end_to_end_time
+host_api_total_time
+```
+
+定义如下：
+
+1. `kernel_time_only`：只统计 CUDA kernel 执行时间；
+2. `gpu_end_to_end_time`：包含 H2D/D2H、同步、GPU 侧整体执行；
+3. `host_api_total_time`：从 Python/C++ API 调用开始到返回结果。
+
+对于非 CUDA 求解器，例如 KDL，至少记录：
+
+```text
+host_api_total_time
+```
+
+对于 PyRoki/JAX，必须区分：
+
+1. 是否包含首次 JIT 编译时间；
+2. warm-up 后重复运行时间；
+3. JIT 缓存是否命中。
+
+对于 cuRobo，必须记录：
+
+1. 是否包含图构建；
+2. 是否包含数据搬运；
+3. 是否包含内部多种子；
+4. 是否包含 warm-up。
+
+## 指标
+
+每个求解器必须统计：
+
+1. total time；
+2. kernel_time_only；
+3. gpu_end_to_end_time；
+4. host_api_total_time；
+5. p50 latency；
+6. p95 latency；
+7. p99 latency；
+8. throughput targets/s；
+9. convergence rate；
+10. position error mean / max；
+11. orientation error mean / max；
+12. iterations mean / max；
+13. failure count；
+14. 是否使用 GPU；
+15. 是否包含 JIT 编译时间；
+16. 是否包含数据拷贝时间；
+17. 初始种子策略；
+18. 实际目标数量 N；
+19. repeat count。
+
+## 重复实验
+
+每个 N 至少重复运行：
+
+```text
+repeat = 30
+```
+
+如果耗时允许，使用：
+
+```text
+repeat = 100
+```
+
+必须输出：
+
+1. mean；
+2. std；
+3. min；
+4. max；
+5. 95% confidence interval。
+
+禁止只输出单次运行结果。
+
+输出结果：
+
+`/mnt/linuxdata/cuda_ik_accelerateion/docs/logs/official_ur10_solver_benchmark.md`
+
+原始数据保存到：
+
+`/mnt/linuxdata/cuda_ik_accelerateion/standard_robot_cuda_ik/data/results/`
+
+原始结果必须至少包括：
+
+```text
+CSV + JSON summary
+```
+
+示例：
+
+```text
+data/results/ur10_cuda_N1000_seed42_repeat30.csv
+data/results/ur10_cuda_N1000_seed42_repeat30_summary.json
+```
+
+# 六、CUDA 6DOF 底层优化主线
+
+## 目标
+
+保留并改造旧项目中已有的 CUDA 底层优化思想，但使其适配官方 UR10。
+
+核心优化包括：
+
+1. 1 Block / target 的批量 IK 映射；
+2. Grid=(N,1,1) 的批量目标并行；
+3. 128 threads/block；
+4. 4 Warp 分工；
+5. PaddedMat6x8；
+6. Register-resident 6×6 LDLT；
+7. Constant Memory robot parameters；
+8. Kernel Fusion；
+9. FP64/FP32 选择与误差分析；
+10. 无 cuBLAS 的小矩阵特化求解。
+
+## 必须输出 CUDA 设计文档
+
+写入：
+
+`/mnt/linuxdata/cuda_ik_accelerateion/docs/logs/cuda_6dof_design_official_ur10.md`
+
+内容包括：
+
+1. 数学模型；
+2. 6DOF IK 线性系统；
+3. 6×6 Jacobian；
+4. 6×6 Hessian；
+5. PaddedMat6x8 的共享内存布局；
+6. Bank conflict 分析；
+7. Register LDLT 运算计数；
+8. 线程层次映射；
+9. constant memory 参数表；
+10. Kernel launch 配置；
+11. 与旧自定义铲斗 UR10 版本的差异；
+12. 为什么官方 UR10 更适合作为论文主实验；
+13. 为什么该设计体现 CUDA 底层适配；
+14. 为什么小规模 IK 矩阵适合手写寄存器级求解；
+15. 为什么不直接调用 cuBLAS/cuSOLVER。
+
+# 七、7DOF 扩展实验与 CUDA 适配
+
+## 目标
+
+加入 7 自由度机械臂作为扩展实验，不作为论文主实验，但必须体现 CUDA 框架的可扩展性。
+
+7DOF 扩展不作为主实验录用依据，不得因 7DOF 未完成而阻塞 UR10 主实验、消融实验、Roofline 分析和论文初稿。
+
+建议使用：
+
+1. Franka Panda 7DOF；
+2. 或 Kinova Gen3 7DOF；
+3. 如果模型获取困难，先保留接口和文档计划，但不得虚构实验结果。
+
+## 7DOF 与 UR10 的对比重点
+
+必须从两个角度详细分析：
+
+## 角度 A：运动学差异
+
+对比 6DOF UR10 与 7DOF 机械臂：
+
+1. 自由度数量；
+2. Jacobian 维度：
+
+   * UR10: 6×6；
+   * 7DOF: 6×7；
+3. Hessian 维度：
+
+   * UR10: 6×6；
+   * 7DOF: 7×7；
+4. 是否存在冗余自由度；
+5. IK 解是否唯一；
+6. 是否需要 null-space；
+7. 是否需要二级目标函数；
+8. 关节限位处理；
+9. 奇异性表现；
+10. 收敛率影响；
+11. 阻尼伪逆和正规方程在 7DOF 下的差异；
+12. 二级目标如何影响公平 benchmark。
+
+## 角度 B：CUDA 底层差异
+
+对比 6DOF 与 7DOF 的 CUDA 实现：
+
+1. PaddedMat6x8 → PaddedMat7x8 或 PaddedMat8x8；
+2. 6×6 LDLT → 7×7 LDLT；
+3. 寄存器数量变化；
+4. Shared memory 增加；
+5. 每次迭代 FK 调用次数变化；
+6. 数值 Jacobian 中心差分：
+
+   * 6DOF: 12 次 FK；
+   * 7DOF: 14 次 FK；
+7. Hessian 构造线程数：
+
+   * 6×6 = 36；
+   * 7×7 = 49；
+8. Warp 分工是否需要调整；
+9. Occupancy 是否下降；
+10. Register spill 风险；
+11. Bank conflict 风险；
+12. Kernel launch 结构是否保持一致；
+13. 性能下降来源拆解；
+14. 是否仍然适合 1 Block / target；
+15. 是否需要更改 block size；
+16. 是否需要模板化支持 DOF=6/7。
+
+## 7DOF 实验要求
+
+如果实现完成，至少进行：
+
+```text
+N = 100
+N = 500
+N = 1000
+```
+
+测试指标同 UR10。
+
+如果未完成实现，必须输出：
+
+`/mnt/linuxdata/cuda_ik_accelerateion/docs/logs/7dof_cuda_extension_plan.md`
+
+说明：
+
+1. 已完成部分；
+2. 未完成部分；
+3. 需要改哪些 kernel；
+4. 需要改哪些矩阵结构；
+5. 需要修改的收敛策略；
+6. 7DOF 冗余自由度处理方案；
+7. 预计风险；
+8. 不允许伪造实验结果；
+9. 不允许在论文中写成已完成实验。
+
+如果 7DOF 实验实际完成，则输出：
+
+`/mnt/linuxdata/cuda_ik_accelerateion/docs/logs/7dof_cuda_extension_results.md`
+
+# 八、消融实验
+
+## 目标
+
+必须证明性能来自 CUDA 底层结构优化，而不是偶然结果。
+
+消融实验至少包括：
+
+```text
+A0: Global memory + unpadded matrix + generic solver baseline
+A1: A0 + Constant Memory
+A2: A1 + PaddedMat6x8
+A3: A2 + Register-resident LDLT
+A4: A3 + Kernel Fusion
+A5: A4 + LM/DLS damping strategy
+A6: Full CUDA Optimized
+```
+
+如果某些优化无法单独关闭，必须说明原因，并采用替代验证方式，例如 ncu profiling 或代码级对比。
+
+## 每项消融输出
+
+每项至少记录：
+
+1. throughput；
+2. p50；
+3. p95；
+4. p99；
+5. convergence rate；
+6. register count；
+7. shared memory per block；
+8. theoretical occupancy；
+9. achieved occupancy；
+10. memory throughput；
+11. SM utilization；
+12. branch divergence；
+13. warp stall reason；
+14. bank conflict 指标；
+15. 是否发生 register spill；
+16. 是否改变收敛率；
+17. 是否改变数值误差。
+
+## 输出
+
+`/mnt/linuxdata/cuda_ik_accelerateion/docs/logs/ablation_official_ur10.md`
+
+要求：
+
+1. 表格；
+2. 文字解释；
+3. 性能来源分析；
+4. 哪个优化贡献最大；
+5. 哪些优化贡献较小但具有理论意义；
+6. 与论文创新点对应；
+7. 不得用宣传性语言；
+8. 不得将小幅提升夸大成核心创新。
+
+# 九、Roofline 与 Nsight Compute 分析
+
+## 目标
+
+对 CUDA kernel 做底层 profiling，证明其性能瓶颈。
+
+至少分析：
+
+1. FP64/FP32 峰值；
+2. DRAM 带宽；
+3. 算术强度 FLOP/Byte；
+4. 是否 compute-bound；
+5. 是否 memory-bound；
+6. warp stall 原因；
+7. issue slot utilization；
+8. achieved occupancy；
+9. register pressure；
+10. shared memory bank conflict；
+11. L1/L2 cache 行为；
+12. kernel launch overhead。
+
+输出：
+
+`/mnt/linuxdata/cuda_ik_accelerateion/docs/logs/roofline_ncu_official_ur10.md`
+
+要求：
+
+1. 不要只贴 ncu 输出；
+2. 要解释每个指标说明什么；
+3. 要和 CUDA 设计对应；
+4. 要指出消费级 RTX 4060 Laptop 的 FP64 限制；
+5. 要解释为什么小矩阵 IK 求解不适合直接调用 cuBLAS；
+6. 要解释为什么手写寄存器 LDLT 有意义；
+7. 要解释当前 kernel 主要受限于计算、访存、launch overhead 还是 warp stall；
+8. 要把结论写成论文可用的学术表述。
+
+# 十、一键复现实验入口
+
+最终必须提供一键复现实验入口。
+
+至少支持：
+
+```bash
+cd /mnt/linuxdata/cuda_ik_accelerateion/standard_robot_cuda_ik
+python benchmark/run_all.py --robot ur10 --seed 42 --N 1000 --repeat 30
+```
+
+如果某些求解器环境不完整，应提供：
+
+```bash
+python benchmark/run_all.py --robot ur10 --seed 42 --N 1000 --repeat 30 --solver cuda
+python benchmark/run_all.py --robot ur10 --seed 42 --N 1000 --repeat 30 --solver kdl
+python benchmark/run_all.py --robot ur10 --seed 42 --N 1000 --repeat 30 --solver curobo
+```
+
+一键脚本必须：
+
+1. 检查目标文件是否存在；
+2. 检查初始种子文件是否存在；
+3. 检查 URDF 是否存在；
+4. 记录 git commit 或文件 hash；
+5. 保存原始 CSV；
+6. 保存 JSON summary；
+7. 保存 Markdown 报告；
+8. 出错时写入 logs，而不是静默失败。
+
+# 十一、论文写作 Skill 调用要求
+
+完成实验和日志后，请调用论文写作 skill，对新论文进行 Markdown 写作。
+
+论文输出目录：
+
+`/mnt/linuxdata/cuda_ik_accelerateion/docs/paper/`
+
+论文使用 Markdown 格式，不要直接写 LaTeX。
+
+建议文件结构：
+
+```text
+/mnt/linuxdata/cuda_ik_accelerateion/docs/paper/
+├── main.md
+├── 01_introduction.md
+├── 02_related_work.md
+├── 03_kinematics_and_cuda_mapping.md
+├── 04_cuda_low_level_design.md
+├── 05_experiments.md
+├── 06_7dof_extension.md
+├── 07_discussion.md
+├── 08_conclusion.md
+└── references.md
+```
+
+# 十二、新论文标题建议
+
+请在理解项目后自行给出 3 个候选标题。
+
+优先考虑以下方向：
+
+1. 面向机器人批量逆运动学求解的 CUDA 底层优化框架与性能分析；
+2. 面向标准机械臂批量逆运动学的消费级 GPU 并行优化方法；
+3. 基于 CUDA 微架构适配的机器人批量逆运动学高性能求解方法。
+
+标题不要强调：
+
+1. 铲斗；
+2. 狭窄空间；
+3. 自定义 UR10；
+4. 轨迹规划；
+5. 运动规划；
+6. 新型 IK 算法。
+
+# 十三、新论文核心结构
+
+论文必须围绕以下主线：
+
+## 研究问题
+
+机器人批量逆运动学求解存在大量小规模矩阵计算和重复目标求解，通用 GPU 框架容易受到 kernel launch、框架调度、小矩阵库调用开销影响。
+
+## 本文方法
+
+针对标准机械臂 IK 问题建立 CUDA 底层优化框架，将批量目标、Jacobian 计算、Hessian 构造、小矩阵求解映射到 Grid/Block/Warp/Thread 层级。
+
+## 核心创新
+
+1. 面向 6DOF IK 的 1 Block/target 批量并行结构；
+2. PaddedMat6x8 共享内存布局；
+3. Register-resident 6×6 LDLT；
+4. Constant Memory 机器人参数广播；
+5. Kernel Fusion 降低启动开销；
+6. 7DOF 扩展中的 7×7 小矩阵适配分析。
+
+## 实验验证
+
+1. 官方 UR10 标准模型；
+2. 固定随机种子可达目标位姿集；
+3. 统一初始种子策略；
+4. 多求解器公平对比；
+5. 不同批量规模测试；
+6. 消融实验；
+7. Nsight Compute / Roofline 分析；
+8. 7DOF 扩展实验或扩展计划。
+
+# 十四、必须避免的问题
+
+1. 不要伪造数据；
+2. 不要写“估计值”冒充实验结果；
+3. 不要把 LM/DLS 调参包装成主要创新；
+4. 不要攻击 cuRobo、PyRoki、HJCD-IK；
+5. 不要使用“致命缺陷”“全面超越”“碾压”等宣传性词汇；
+6. 不要混淆 IK 求解与完整运动规划；
+7. 不要把随机点称为路径规划；
+8. 不要将铲斗 UR10 作为主线；
+9. 不要忽略统计重复实验；
+10. 不要让不同求解器使用不同目标数据；
+11. 不要让不同求解器使用不同初始种子却不说明；
+12. 不要混淆 kernel-only 时间和端到端时间；
+13. 不要因为 7DOF 未完成而阻塞 UR10 主线；
+14. 不要把未完成的 7DOF 实验写成已完成结果。
+
+# 十五、最终交付物
+
+完成后应至少生成以下文件：
+
+```text
+/mnt/linuxdata/cuda_ik_accelerateion/docs/logs/official_ur10_model_verification.md
+/mnt/linuxdata/cuda_ik_accelerateion/docs/logs/target_generation_seed42.md
+/mnt/linuxdata/cuda_ik_accelerateion/docs/logs/official_ur10_solver_benchmark.md
+/mnt/linuxdata/cuda_ik_accelerateion/docs/logs/cuda_6dof_design_official_ur10.md
+/mnt/linuxdata/cuda_ik_accelerateion/docs/logs/ablation_official_ur10.md
+/mnt/linuxdata/cuda_ik_accelerateion/docs/logs/roofline_ncu_official_ur10.md
+/mnt/linuxdata/cuda_ik_accelerateion/docs/logs/7dof_cuda_extension_plan.md
+/mnt/linuxdata/cuda_ik_accelerateion/docs/paper/main.md
+```
+
+如果 7DOF 实验实际完成，则还需生成：
+
+```text
+/mnt/linuxdata/cuda_ik_accelerateion/docs/logs/7dof_cuda_extension_results.md
+```
+
+还必须生成：
+
+```text
+/mnt/linuxdata/cuda_ik_accelerateion/docs/logs/final_acceptance_report.md
+```
+
+# 十六、执行模式与最终验收标准
+
+我将使用 Codex 的计划模式执行本任务。请你不要只做泛泛的分析，而是先制定一份可执行、可检查、可逐步推进的完整计划，然后按照该计划推进，直到所有任务达到验收标准。
+
+## 16.1 执行原则
+
+1. 先完整阅读：
+
+```text
+/mnt/linuxdata/cuda_ik_accelerateion/docs/PROJECT_OVERVIEW.md
+```
+
+2. 再检查旧项目中可复用的代码、benchmark、URDF、CUDA kernel、论文文档和实验日志。
+
+3. 基于现有工程，而不是重新从零开始。
+
+4. 每一个阶段都必须有明确输入、输出、验收标准和失败处理方案。
+
+5. 如果某项任务暂时无法完成，例如 7DOF 模型缺失、某个求解器无法安装、Nsight Compute 无法运行，不允许跳过或编造结果，必须：
+
+   * 记录失败原因；
+   * 写入对应 logs；
+   * 给出可复现的错误信息；
+   * 给出后续修复路径；
+   * 在论文中标记为“未完成/扩展计划”，不得写成已完成实验。
+
+6. 所有实验数据必须来自实际运行结果，禁止使用估计值冒充实测值。
+
+7. 所有求解器必须尽可能使用相同的随机种子、相同目标数据集、相同 URDF/TCP 定义、相同初始种子和相同收敛判据。
+
+8. 如果某求解器因为内部机制无法完全统一初始种子或收敛策略，必须在 benchmark 报告中明确说明，并将其作为公平性限制。
+
+9. 最终目标不是只生成代码，而是完成：
+
+   * 标准 UR10 主实验；
+   * 可复现目标位姿集生成；
+   * 统一初始种子生成；
+   * 多求解器性能对比；
+   * CUDA 6DOF 底层适配；
+   * 7DOF 扩展实验或完整扩展计划；
+   * 消融实验；
+   * Nsight/Roofline 分析；
+   * 实验日志；
+   * Markdown 论文初稿；
+   * 最终验收报告。
+
+## 16.2 最终验收目标
+
+本任务的最终验收标准是：
+
+**我提出的所有任务均达标。**
+
+具体包括以下检查项：
+
+### A. 项目结构验收
+
+必须存在并结构清晰：
+
+```text
+/mnt/linuxdata/cuda_ik_accelerateion/standard_robot_cuda_ik/
+```
+
+且包含：
+
+```text
+config/
+urdf/
+src/
+include/
+benchmark/
+data/
+experiments/
+docs/
+```
+
+### B. 官方 UR10 主实验验收
+
+必须完成官方 UR10 模型适配，并生成：
+
+```text
+/mnt/linuxdata/cuda_ik_accelerateion/docs/logs/official_ur10_model_verification.md
+```
+
+该文件必须包含：
+
+1. URDF 路径；
+2. MD5；
+3. 关节链；
+4. TCP 定义；
+5. 关节轴；
+6. 关节限位；
+7. CPU FK 与 CUDA FK 一致性验证；
+8. 各求解器模型一致性检查；
+9. 不一致处理方案。
+
+### C. 可复现目标数据集验收
+
+必须使用固定随机种子，例如：
+
+```text
+seed=42
+```
+
+生成官方 UR10 可达目标位姿集，并保存至少：
+
+```text
+N=100
+N=500
+N=1000
+N=5000
+```
+
+目标数据必须由随机采样关节角后 FK 生成，确保全部目标理论可达。
+
+必须生成：
+
+```text
+/mnt/linuxdata/cuda_ik_accelerateion/docs/logs/target_generation_seed42.md
+```
+
+### D. 统一初始种子验收
+
+必须生成统一初始种子文件，至少包括：
+
+1. zero seed；
+2. home seed；
+3. random seed；
+4. near-ground-truth seed。
+
+必须说明主 benchmark 默认使用哪一种。
+
+所有求解器的初始种子策略必须记录。
+
+### E. 多求解器 Benchmark 验收
+
+至少完成以下求解器对比：
+
+1. 自研 CUDA 6DOF IK；
+2. cuRobo；
+3. PyRoki；
+4. KDL 或 TRAC-IK；
+5. CPU Numeric DLS baseline。
+
+每个求解器必须使用相同目标数据。
+
+每项实验至少统计：
+
+1. total time；
+2. kernel_time_only；
+3. gpu_end_to_end_time；
+4. host_api_total_time；
+5. p50 latency；
+6. p95 latency；
+7. p99 latency；
+8. throughput；
+9. convergence rate；
+10. position error mean/max；
+11. orientation error mean/max；
+12. iterations mean/max；
+13. failure count；
+14. repeat count；
+15. mean；
+16. std；
+17. 95% confidence interval。
+
+必须生成：
+
+```text
+/mnt/linuxdata/cuda_ik_accelerateion/docs/logs/official_ur10_solver_benchmark.md
+```
+
+### F. CUDA 6DOF 底层设计验收
+
+必须完成官方 UR10 的 CUDA 6DOF 适配，并生成：
+
+```text
+/mnt/linuxdata/cuda_ik_accelerateion/docs/logs/cuda_6dof_design_official_ur10.md
+```
+
+该文件必须详细说明：
+
+1. 6DOF IK 数学模型；
+2. Jacobian 6×6；
+3. Hessian 6×6；
+4. PaddedMat6x8；
+5. Register-resident 6×6 LDLT；
+6. Constant Memory 参数表；
+7. 线程层次映射；
+8. Kernel Fusion；
+9. 与旧铲斗 UR10 版本的差异；
+10. 为什么该设计体现 CUDA 底层适配。
+
+### G. 7DOF 扩展验收
+
+必须完成以下二者之一。
+
+#### 情况 1：7DOF 实验完成
+
+生成：
+
+```text
+/mnt/linuxdata/cuda_ik_accelerateion/docs/logs/7dof_cuda_extension_results.md
+```
+
+并包含：
+
+1. 7DOF 机械臂模型；
+2. 6×7 Jacobian；
+3. 7×7 Hessian；
+4. 7×7 LDLT 或替代求解策略；
+5. PaddedMat7x8 / PaddedMat8x8；
+6. 与 UR10 6DOF 的运动学差异；
+7. 与 UR10 6DOF 的 CUDA 底层差异；
+8. 性能对比；
+9. 收敛率对比；
+10. register/shared memory/occupancy 对比。
+
+#### 情况 2：7DOF 实验未完成
+
+必须生成：
+
+```text
+/mnt/linuxdata/cuda_ik_accelerateion/docs/logs/7dof_cuda_extension_plan.md
+```
+
+并清楚说明：
+
+1. 已完成内容；
+2. 未完成原因；
+3. 需要修改的 kernel；
+4. 需要修改的矩阵结构；
+5. 需要修改的收敛策略；
+6. 7DOF 冗余自由度处理方案；
+7. 风险分析；
+8. 不得在论文中写成已完成实验。
+
+### H. 消融实验验收
+
+必须完成或明确记录无法完成原因。
+
+必须生成：
+
+```text
+/mnt/linuxdata/cuda_ik_accelerateion/docs/logs/ablation_official_ur10.md
+```
+
+至少覆盖：
+
+1. A0: Global memory + unpadded matrix + generic solver baseline；
+2. A1: A0 + Constant Memory；
+3. A2: A1 + PaddedMat6x8；
+4. A3: A2 + Register-resident LDLT；
+5. A4: A3 + Kernel Fusion；
+6. A5: A4 + LM/DLS damping strategy；
+7. A6: Full CUDA Optimized。
+
+每项记录：
+
+1. throughput；
+2. p50；
+3. p95；
+4. p99；
+5. convergence rate；
+6. register count；
+7. shared memory；
+8. occupancy；
+9. achieved occupancy；
+10. memory throughput；
+11. SM utilization；
+12. warp stall reason；
+13. bank conflict；
+14. register spill。
+
+### I. Roofline / Nsight Compute 验收
+
+必须生成：
+
+```text
+/mnt/linuxdata/cuda_ik_accelerateion/docs/logs/roofline_ncu_official_ur10.md
+```
+
+内容必须解释：
+
+1. FP64/FP32 峰值；
+2. DRAM 带宽；
+3. 算术强度；
+4. compute-bound / memory-bound 判断；
+5. warp stall；
+6. issue slot utilization；
+7. achieved occupancy；
+8. register pressure；
+9. shared memory bank conflict；
+10. L1/L2 cache；
+11. kernel launch overhead；
+12. 为什么小矩阵 IK 不适合直接调用 cuBLAS；
+13. 为什么手写寄存器 LDLT 有意义。
+
+### J. 一键复现验收
+
+必须能运行或提供清晰的运行入口：
+
+```bash
+cd /mnt/linuxdata/cuda_ik_accelerateion/standard_robot_cuda_ik
+python benchmark/run_all.py --robot ur10 --seed 42 --N 1000 --repeat 30
+```
+
+若依赖不完整，必须能至少单独运行某个 solver，并说明缺失依赖。
+
+### K. 原始数据格式验收
+
+benchmark 原始数据必须保存为：
+
+```text
+CSV + JSON summary
+```
+
+不能只写 Markdown 报告。
+
+### L. 论文 Markdown 验收
+
+必须调用论文写作 skill，生成 Markdown 论文初稿到：
+
+```text
+/mnt/linuxdata/cuda_ik_accelerateion/docs/paper/
+```
+
+至少包括：
+
+```text
+/mnt/linuxdata/cuda_ik_accelerateion/docs/paper/main.md
+/mnt/linuxdata/cuda_ik_accelerateion/docs/paper/01_introduction.md
+/mnt/linuxdata/cuda_ik_accelerateion/docs/paper/02_related_work.md
+/mnt/linuxdata/cuda_ik_accelerateion/docs/paper/03_kinematics_and_cuda_mapping.md
+/mnt/linuxdata/cuda_ik_accelerateion/docs/paper/04_cuda_low_level_design.md
+/mnt/linuxdata/cuda_ik_accelerateion/docs/paper/05_experiments.md
+/mnt/linuxdata/cuda_ik_accelerateion/docs/paper/06_7dof_extension.md
+/mnt/linuxdata/cuda_ik_accelerateion/docs/paper/07_discussion.md
+/mnt/linuxdata/cuda_ik_accelerateion/docs/paper/08_conclusion.md
+/mnt/linuxdata/cuda_ik_accelerateion/docs/paper/references.md
+```
+
+论文主线必须是：
+
+**通过 CUDA 底层结构适配实现批量逆运动学求解的极致性能。**
+
+不要把论文写成“新 IK 算法论文”。
+
+## 16.3 最终输出要求
+
+任务完成后，必须输出一个总验收报告：
+
+```text
+/mnt/linuxdata/cuda_ik_accelerateion/docs/logs/final_acceptance_report.md
+```
+
+报告中逐项列出：
+
+| 验收项 | 是否完成 | 文件路径 | 证据 | 遗留问题 |
+| --- | ---- | ---- | -- | ---- |
+
+验收项包括：
+
+1. 项目结构；
+2. 官方 UR10 模型验证；
+3. 随机可达目标生成；
+4. 统一初始种子生成；
+5. 多求解器 benchmark；
+6. CUDA 6DOF 设计；
+7. 7DOF 扩展；
+8. 消融实验；
+9. Roofline/Nsight；
+10. 一键复现；
+11. 原始数据 CSV/JSON；
+12. Markdown 论文；
+13. 数据可复现性；
+14. 是否存在估计值冒充实测值；
+15. 是否所有求解器共用同一测试集；
+16. 是否所有求解器初始种子策略已记录；
+17. 是否区分 kernel-only、GPU end-to-end、host API total 三类时间。
+
+只有当 `final_acceptance_report.md` 中所有关键项均为“完成”或“已明确记录未完成原因且未伪造成果”时，才算任务达标。
+
+先理解并且制定计划

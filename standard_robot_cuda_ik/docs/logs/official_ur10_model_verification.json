@@ -1,0 +1,35 @@
+{
+  "urdf_path": "/mnt/linuxdata/cuda_ik_accelerateion/standard_robot_cuda_ik/urdf/ur10_official.urdf",
+  "urdf_md5": "cc4a23af365aaec3050462b8528bb994",
+  "source_repo": "https://github.com/UniversalRobots/Universal_Robots_ROS2_Description",
+  "source_ref": "4.3.1",
+  "source_commit": "ae333289875f9ba5a9ea6649a54036efb5ccabee",
+  "joint_count": 6,
+  "active_joints": [
+    "shoulder_pan_joint",
+    "shoulder_lift_joint",
+    "elbow_joint",
+    "wrist_1_joint",
+    "wrist_2_joint",
+    "wrist_3_joint"
+  ],
+  "tool_offset_row_major": [
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    1.0
+  ],
+  "fk_max_abs_error_vs_yourdfpy": 3.3306690738754696e-16
+}

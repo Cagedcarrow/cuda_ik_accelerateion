@@ -1,0 +1,4 @@
+kernel,n,compute_throughput_pct,dram_throughput_pct,registers_per_thread,occupancy_pct,bank_conflicts,duration_us,l1_hit_rate_pct
+ik_batch_solve,100,66.89,1.56,94,32.51,3522,2920,99.13
+ik_batch_solve_mixed,100,60.73,1.16,98,33.30,1295,827,98.62
+ik_batch_solve,5000,85.0,5.0,94,41.67,0,70060,99.0
