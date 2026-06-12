@@ -1,0 +1,53 @@
+{
+  "curobo_version": "0.8.0.post1.dev33",
+  "python_version": "3.10.12 (main, Mar  3 2026, 11:56:32) [GCC 11.4.0]",
+  "torch_version": "2.6.0+cu124",
+  "cuda_toolkit_version": "12.4",
+  "cuda_available": true,
+  "gpu_name": "NVIDIA GeForce RTX 4060 Laptop GPU",
+  "gpu_vram_gb": 7.64,
+  "gpu_compute_capability": "8.9",
+  "platform": "Linux-6.8.0-117-generic-x86_64-with-glibc2.35",
+  "hostname": "liuxiaopeng-Predator-PHN16-71",
+  "benchmark_settings": {
+    "robot": "ur10",
+    "tool": "tool0",
+    "seed": 42,
+    "seed_strategy": "zero_seed",
+    "repeat": 30,
+    "warmup": 3,
+    "pos_tolerance_m": 0.01,
+    "rot_tolerance_rad": 0.0872664626,
+    "threshold_name": "Medium (10mm/5\u00b0)",
+    "use_cuda_graph": false,
+    "self_collision_check": false,
+    "num_seeds": 1,
+    "seed_solver_num_seeds": 1,
+    "urdf": "/mnt/linuxdata/cuda_ik_accelerateion/standard_robot_cuda_ik/urdf/ur10_official.urdf",
+    "joint_names": [
+      "shoulder_pan_joint",
+      "shoulder_lift_joint",
+      "elbow_joint",
+      "wrist_1_joint",
+      "wrist_2_joint",
+      "wrist_3_joint"
+    ],
+    "target_link": "tool0",
+    "load_collision_spheres": false
+  },
+  "n_list": [
+    100,
+    500,
+    1000,
+    2000,
+    3000,
+    4000,
+    5000,
+    6000,
+    7000,
+    8000,
+    9000,
+    10000
+  ],
+  "note": "Original full_range data collected on RTX 4090 (24GB); current data on RTX 4060 (8GB). OOM may differ."
+}

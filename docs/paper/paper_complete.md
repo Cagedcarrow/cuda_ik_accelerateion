@@ -6,7 +6,7 @@
 
 本文的核心方法是将每个目标映射为 1 个 CUDA block，并在 block 内用 128 threads 分工完成 FK、数值 Jacobian、阻尼正规方程构造与寄存器级 6×6 LDLT 求解。为保证结果可比较，本文只保留标准 UR10 批量 IK 查询，不引入路径规划、碰撞检测、轨迹回放等上层环节。本文进一步统一了位姿误差定义、DLS 阻尼项和共享内存数据布局，保证实验结果具有一致的模型与数值口径。
 
-实验上，本文用 B0-B6 消融、cuRobo 统一口径比较、三档组合阈值扫描、N=100→10000 全量程固定步长扫描（12 个 N 值）、Nsight Compute profiling 和 7DOF Panda 正确性验证构成证据链。结果表明：常量内存与 `PaddedMat6x8` 只带来有限收益，自适应阻尼决定收敛率，混合精度有效提高吞吐；CUDA B5 在全量程上吞吐稳定（148k–174k, ±8%），GPU 时间与批量规模严格线性（R²>0.999），而 cuRobo 在本文统一 benchmark 配置下于 4/12 个 N 值上出现求解时间从 ~32ms 跳变至 ~230ms 的批量敏感振荡——进一步源码检查与时间特征分析表明，该退化更可能来自高层框架的 workspace 管理、内存分配或同步开销，而非 IK 迭代计算本身，其精确机制仍需 Nsight Systems 与 CUDA API trace 进一步确认；CUDA B5 因裸 cudaMalloc 一次性分配和单 kernel 全迭代封装而不依赖第三方内存管理器，对此类开销具有结构免疫性；在 cuRobo 正常模式下，其在 N≥6000 时吞吐可反超 CUDA B5（最高 1.43×），但退化模式使其吞吐骤降至 18k–42k，性能可预测性不足；NCU 结果说明该 kernel 主要受计算吞吐与寄存器压力约束，而非 DRAM 带宽约束；Panda 结果只用于正确性验证，不作为正式性能对比。
+实验上，本文用 B0-B6 消融、cuRobo 统一口径比较、三档组合阈值扫描、N=100→10000 全量程固定步长扫描（12 个 N 值）、Nsight Compute profiling 和 7DOF Panda 正确性验证构成证据链。结果表明：常量内存与 `PaddedMat6x8` 只带来有限收益，自适应阻尼决定收敛率，混合精度有效提高吞吐；CUDA B5 在全量程上吞吐稳定（148k–174k, ±8%），GPU 时间与批量规模严格线性（R²>0.999），而 cuRobo 在本文统一 benchmark 配置下于 4/12 个 N 值上出现求解时间从 ~32ms 跳变至 ~230ms 的批量敏感振荡。诊断实验（随机顺序扫描、独立进程隔离、固定 max_batch_size 排查）表明该振荡与运行顺序和进程状态无关。Nsight Systems CUDA API trace 进一步揭示：退化 N 值（N=4000）的 CUDA kernel 启动数为正常 N 值（N=5000）的 2.37 倍（14,108 vs 5,945），跨 kernel 事件同步调用数高达 13–14 倍，而 cudaMalloc/cudaFree 开销在两个 N 值下均微不足道（< 1% API 时间）——明确排除了 PyTorch CUDA Caching Allocator 作为退化主因的假设，指向 cuRobo 内部 sub-batch 划分策略的批量依赖性。CUDA B5 因单 kernel 全迭代封装（N 个 block 在同一 launch 中完成全部迭代）对此类开销具有结构免疫性；在 cuRobo 正常模式下，其在 N≥6000 时吞吐可反超 CUDA B5（最高 1.43×），但退化模式使其吞吐骤降至 18k–42k，性能可预测性不足；NCU 结果说明该 kernel 主要受计算吞吐与寄存器压力约束，而非 DRAM 带宽约束；Panda 结果只用于正确性验证，不作为正式性能对比。
 
 ### 关键词
 
@@ -238,40 +238,49 @@ $$
 
 #### Gauss-Newton线性化与DLS正则化
 
-在当前迭代点$\mathbf{q}^{(k)}$处对$\mathbf{e}(\mathbf{q})$进行一阶泰勒展开：
+在当前迭代点$\mathbf{q}^{(k)}$处对末端执行器位姿$\mathbf{x}(\mathbf{q})$进行一阶泰勒展开：
 
 $$
-\mathbf{e}(\mathbf{q}^{(k)} + \Delta\mathbf{q}) \approx \mathbf{e}(\mathbf{q}^{(k)}) + \mathbf{J}(\mathbf{q}^{(k)}) \,\Delta\mathbf{q}
+\mathbf{x}(\mathbf{q}^{(k)} + \Delta\mathbf{q}) \approx \mathbf{x}(\mathbf{q}^{(k)}) + \mathbf{J}(\mathbf{q}^{(k)}) \,\Delta\mathbf{q}
 
 $$
 
-其中$\mathbf{J}(\mathbf{q}) \in \mathbb{R}^{6\times6}$为位姿误差对关节角的雅可比矩阵（$J_{ij} = \partial e_i / \partial q_j$）。代入上式并对$\Delta\mathbf{q}$求梯度，令梯度为零得到Gauss-Newton正规方程：
+其中$\mathbf{J}(\mathbf{q}) \in \mathbb{R}^{6\times6}$为末端执行器位姿对关节角的雅可比矩阵（$J_{ij} = \partial x_i / \partial q_j$，即 $\mathbf{J} = \partial\mathbf{x}/\partial\mathbf{q}$）。代入位姿误差定义$\mathbf{e}(\mathbf{q}) = \mathbf{x}^d - \mathbf{x}(\mathbf{q})$，得到误差传播关系：
+
+$$
+\mathbf{e}(\mathbf{q}^{(k)} + \Delta\mathbf{q}) \approx \mathbf{e}(\mathbf{q}^{(k)}) - \mathbf{J}(\mathbf{q}^{(k)}) \,\Delta\mathbf{q}
+
+$$
+
+对$\Delta\mathbf{q}$最小化加权误差平方和$\|\mathbf{W}\,\mathbf{e}(\mathbf{q}^{(k+1)})\|_2^2$，令梯度为零得到Gauss-Newton正规方程：
 
 $$
 \mathbf{J}^\top \mathbf{W}^2 \mathbf{J} \,\Delta\mathbf{q} = \mathbf{J}^\top \mathbf{W}^2 \,\mathbf{e}(\mathbf{q}^{(k)})
 
 $$
 
-当$\mathbf{J}$接近奇异时（如机械臂处于或接近奇异构型、接近关节限位时），矩阵$\mathbf{J}^\top \mathbf{W}^2 \mathbf{J}$的条件数急剧增大，上式产生的步长$\Delta\mathbf{q}$可能趋于无界。阻尼最小二乘法（Damped Least-Squares, DLS）引入二次阻尼项对该病态性进行正则化：
+当$\mathbf{J}$接近奇异时（如机械臂处于或接近奇异构型、接近关节限位时），矩阵$\mathbf{J}^\top \mathbf{W}^2 \mathbf{J}$的条件数急剧增大，上式产生的步长$\Delta\mathbf{q}$可能趋于无界。阻尼最小二乘法（Damped Least-Squares, DLS）引入Tikhonov正则化对该病态性进行正则化：
 
 $$
-\Delta\mathbf{q} = \arg\min_{\Delta\mathbf{q}} \; \big\|\mathbf{W}(\mathbf{J}\Delta\mathbf{q} - \mathbf{e})\big\|_2^2 + \lambda^2 \|\Delta\mathbf{q}\|_2^2
+\Delta\mathbf{q} = \arg\min_{\Delta\mathbf{q}} \; \big\|\mathbf{W}(\mathbf{e} - \mathbf{J}\Delta\mathbf{q})\big\|_2^2 + \lambda \|\Delta\mathbf{q}\|_2^2
 
 $$
 
-其中$\lambda > 0$为阻尼系数。阻尼项$\lambda^2\|\Delta\mathbf{q}\|_2^2$同时起到两个作用：（1）压制大步长，防止线性近似失效区域内的振荡；（2）在$\mathbf{J}$的零空间方向上提供唯一解（最小范数解）。令上式对$\Delta\mathbf{q}$的导数为零，得到DLS正规方程：
+其中$\lambda > 0$为直接加入正规矩阵对角线的正则化系数。阻尼项$\lambda\|\Delta\mathbf{q}\|_2^2$同时起到两个作用：（1）压制大步长，防止线性近似失效区域内的振荡；（2）在$\mathbf{J}$的零空间方向上提供唯一解（最小范数解）。令上式对$\Delta\mathbf{q}$的导数为零，得到DLS正规方程：
 
 $$
-\big(\mathbf{J}^\top \mathbf{W}^2 \mathbf{J} + \lambda^2 \mathbf{I}\big) \,\Delta\mathbf{q} = \mathbf{J}^\top \mathbf{W}^2 \,\mathbf{e}(\mathbf{q}^{(k)})
+\big(\mathbf{J}^\top \mathbf{W}^2 \mathbf{J} + \lambda \mathbf{I}\big) \,\Delta\mathbf{q} = \mathbf{J}^\top \mathbf{W}^2 \,\mathbf{e}(\mathbf{q}^{(k)})
 
 $$
+
+> **记号约定：** 本文将 $\lambda$ 定义为直接加入正规矩阵对角线的正则化系数（即 DLS 目标函数中正则项为 $\lambda\|\Delta\mathbf{q}\|_2^2$，对应正规方程中的 $\lambda\mathbf{I}$）。若采用部分文献中以 $\mu$ 表示阻尼系数并写作 $\mu^2\mathbf{I}$ 的记号体系，则本文的 $\lambda$ 等价于 $\mu^2$。该定义与 CUDA 源码实现中 `H_ii += s_lambda`（将 `s_lambda` 直接加到 $\mathbf{H}$ 对角线）保持一致。
 
 #### 阻尼正规矩阵与梯度向量的定义
 
 记$\mathbf{H}$为阻尼正规矩阵（Gauss-Newton近似海森）、$\mathbf{g}$为梯度向量：
 
 $$
-\mathbf{H} = \mathbf{J}^\top \mathbf{W}^2 \mathbf{J} + \lambda^2 \mathbf{I} \in \mathbb{R}^{6\times6}, \qquad
+\mathbf{H} = \mathbf{J}^\top \mathbf{W}^2 \mathbf{J} + \lambda \mathbf{I} \in \mathbb{R}^{6\times6}, \qquad
 \mathbf{g} = \mathbf{J}^\top \mathbf{W}^2 \,\mathbf{e}(\mathbf{q}) \in \mathbb{R}^6
 
 $$
@@ -299,14 +308,14 @@ $$
 
 $$
 
-步长$\alpha \in (0, 1]$由$\|\Delta\mathbf{q}\|_\infty \leq 0.25$ rad的硬约束确定——若$\|\Delta\mathbf{q}\|_\infty \leq 0.25$，则$\alpha = 1.0$（全步长）；否则$\alpha = 0.25 / \|\Delta\mathbf{q}\|_\infty$（等比缩放）。该约束的物理依据为：单步关节角变化超过0.25 rad（约14.3°）时，线性近似假设的截断误差可能主导求解方向，导致迭代发散。
+步长$\alpha \in (0, 1]$由$\|\Delta\mathbf{q}\|_\infty \leq 0.35$ rad的硬约束确定——若$\|\Delta\mathbf{q}\|_\infty \leq 0.35$，则$\alpha = 1.0$（全步长）；否则$\alpha = 0.35 / \|\Delta\mathbf{q}\|_\infty$（等比缩放）。该约束的物理依据为：单步关节角变化超过0.35 rad（约20.1°）时，线性近似假设的截断误差可能主导求解方向，导致迭代发散。该阈值与CUDA源码实现一致，用于在保持稳定性的同时允许 wrist reorientation 所需的较大关节调整。
 
 #### 数值雅可比矩阵
 
 雅可比矩阵$\mathbf{J} \in \mathbb{R}^{6\times6}$的第$j$列（$j = 1,\ldots,6$）通过中心差分格式数值计算：
 
 $$
-\mathbf{J}_{:,j}(\mathbf{q}) = \frac{\mathbf{e}\big(\mathbf{q} + \varepsilon \,\mathbf{e}_j\big) - \mathbf{e}\big(\mathbf{q} - \varepsilon \,\mathbf{e}_j\big)}{2\varepsilon}
+\mathbf{J}_{:,j}(\mathbf{q}) = \frac{\mathbf{x}\big(\mathbf{q} + \varepsilon \,\mathbf{e}_j\big) - \mathbf{x}\big(\mathbf{q} - \varepsilon \,\mathbf{e}_j\big)}{2\varepsilon}
 
 $$
 
@@ -325,7 +334,7 @@ $$
 
 上式定义了一个**固定规模**的线性系统：$\mathbf{H} \in \mathbb{R}^{6\times6}$，$\mathbf{g} \in \mathbb{R}^6$，$\Delta\mathbf{q} \in \mathbb{R}^6$。矩阵规模不随机械臂自由度数变化（对于6-DOF串联臂恒为$6\times6$），也不随批量目标数$N$增长——每个目标的DLS迭代始终求解同一规模的线性系统。
 
-$\mathbf{H}$的对称正定性由两项保证：（1）$\mathbf{J}^\top \mathbf{W}^2 \mathbf{J}$为半正定（$\mathbf{W}^2$为对角正定，二次型$\mathbf{v}^\top \mathbf{J}^\top \mathbf{W}^2 \mathbf{J} \mathbf{v} = \|\mathbf{W} \mathbf{J} \mathbf{v}\|_2^2 \geq 0$）；（2）阻尼项$\lambda^2 \mathbf{I}$（$\lambda > 0$）使全体特征值严格正偏移$\lambda^2$，确保$\mathbf{H} \succ 0$。对称正定性使LDL^T分解（一种无平方根、无需选主元的Cholesky变体）成为该系统的自然求解方法。
+$\mathbf{H}$的对称正定性由两项保证：（1）$\mathbf{J}^\top \mathbf{W}^2 \mathbf{J}$为半正定（$\mathbf{W}^2$为对角正定，二次型$\mathbf{v}^\top \mathbf{J}^\top \mathbf{W}^2 \mathbf{J} \mathbf{v} = \|\mathbf{W} \mathbf{J} \mathbf{v}\|_2^2 \geq 0$）；（2）阻尼项$\lambda \mathbf{I}$（$\lambda > 0$）使全体特征值严格正偏移$\lambda$，确保$\mathbf{H} \succ 0$。对称正定性使LDL^T分解（一种无平方根、无需选主元的Cholesky变体）成为该系统的自然求解方法。
 
 #### LDL^T分解与求解步骤
 
@@ -359,7 +368,7 @@ $$
 
 #### 批量任务的形式化定义
 
-给定$N$个目标末端位姿集合$\{\mathbf{T}_i^d\}_{i=1}^{N}$与对应的$N$个初始关节角种子$\{\mathbf{q}_i^{(0)}\}_{i=1}^{N}$，批量逆运动学求解定义为：为每个$i \in \{1, \ldots, N\}$寻找关节角$\mathbf{q}_i^* \in \mathbb{R}^6$，使其满足上式的收敛判据，或经$K_{\max}$次DLS迭代（$K_{\max}=50$）后终止并返回历史最优解（以最终位姿误差$\|\mathbf{e}(\mathbf{q}^{(K)})\|_2$最小者）。
+给定$N$个目标末端位姿集合$\{\mathbf{T}_i^d\}_{i=1}^{N}$与对应的$N$个初始关节角种子$\{\mathbf{q}_i^{(0)}\}_{i=1}^{N}$，批量逆运动学求解定义为：为每个$i \in \{1, \ldots, N\}$寻找关节角$\mathbf{q}_i^* \in \mathbb{R}^6$，使其满足上式的收敛判据，或经$K_{\max}$次DLS迭代（$K_{\max}=160$）后终止并返回历史最优解（以最终位姿误差$\|\mathbf{e}(\mathbf{q}^{(K)})\|_2$最小者）。
 
 形式化表述为：
 
@@ -367,7 +376,7 @@ $$
 \begin{aligned}
 \text{求解: } & \mathbf{q}_i^* = \arg\min_{\mathbf{q} \in \mathcal{Q}} \big\|\mathbf{W} \,\mathbf{e}_i(\mathbf{q}; \mathbf{T}_i^d)\big\|_2^2, \quad i = 1, \ldots, N \\
 \text{约束: } & \mathbf{q}^{(k+1)} = \Pi_{\mathcal{Q}}\big(\mathbf{q}^{(k)} + \alpha \,\Delta\mathbf{q}^{(k)}\big), \quad k = 0, \ldots, K_{\max}-1 \\
-& \Delta\mathbf{q}^{(k)} = \big(\mathbf{J}^\top \mathbf{W}^2 \mathbf{J} + \lambda^2 \mathbf{I}\big)^{-1} \mathbf{J}^\top \mathbf{W}^2 \,\mathbf{e}(\mathbf{q}^{(k)})
+& \Delta\mathbf{q}^{(k)} = \big(\mathbf{J}^\top \mathbf{W}^2 \mathbf{J} + \lambda \mathbf{I}\big)^{-1} \mathbf{J}^\top \mathbf{W}^2 \,\mathbf{e}(\mathbf{q}^{(k)})
 \end{aligned}
 $$
 
@@ -442,10 +451,14 @@ $$
 |---|---|---|---|---|
 | W0 | 0--31 | 前述FK、位姿误差、LDL^T求解、LM阻尼更新、收敛判定 | FK链式乘法、位姿误差计算、LDL^T求解、LM阻尼更新、收敛判定 | Lane 0串行控制 |
 | W1 | 32--63 | 上式 | 数值雅可比6列并行组装（每列1 lane） | 6路数据并行 |
-| W2 | 64--95 | 上式 | 阻尼正规矩阵$\mathbf{H}$与梯度向量$\mathbf{g}$构造（每元素1 lane） | 36路数据并行 |
-| W3 | 96--127 | 前述关节更新、限位投影、步长裁剪 | 关节角步长更新、限位投影、步长裁剪 | 6路数据并行 |
+| — | 0--35 | 上式 | 阻尼正规矩阵$\mathbf{H}$全元素构造（`row=tid/6, col=tid%6`，每元素1线程） | 36路数据并行 |
+| — | 0--5 | 上式 | 梯度向量$\mathbf{g}$构造（每分量1线程） | 6路数据并行 |
+| — | 0--5 | 前述关节更新、限位投影、步长裁剪 | 关节角步长更新、限位投影、步长裁剪 | 6路数据并行 |
+| — | 0 | 前述FK、位姿误差、LDL^T求解、LM阻尼更新、收敛判定 | FK链式乘法、位姿误差计算、LDL^T求解、LM阻尼更新、收敛判定 | 串行控制 |
 
-该映射方案的核心优势在于：$N$个目标的全部DLS迭代在**单次kernel launch**中完成——上式的$N$个独立优化问题由$N$个block并行求解，每个block内部的4个Warp协作完成上式的构造与求解。与逐目标多次kernel launch的方案相比，该设计消除了kernel launch累积开销——该开销恰是现有GPU求解器（如cuRobo）在中小批量场景下的主要性能瓶颈。第四章将依次阐述该映射框架中每个Warp的CUDA工程实现、共享内存布局的Bank冲突消除设计、以及寄存器级LDL^T的完整伪代码。
+> **注：** 上表采用 block 内阶段式扁平线程索引（flat threadIdx.x）映射，而非严格按 warp 边界划分。对于 6×6 的 $\mathbf{H}$ 矩阵，`threadIdx.x=0–35` 共 36 个线程参与计算（跨越第 0 个 warp 的 32 个线程及第 1 个 warp 的前 4 个线程）；梯度向量 $\mathbf{g}$ 和关节更新由 `threadIdx.x=0–5` 负责；控制流（FK、LDL^T、阻尼更新、收敛判定）由 `threadIdx.x=0` 串行执行。该设计与 CUDA 源码实现完全一致。
+
+该映射方案的核心优势在于：$N$个目标的全部DLS迭代在**单次kernel launch**中完成——上式的$N$个独立优化问题由$N$个block并行求解，每个block内部通过阶段式线程分工协作完成上式的构造与求解。与逐目标多次kernel launch的方案相比，该设计消除了kernel launch累积开销——该开销恰是现有GPU求解器（如cuRobo）在中小批量场景下的主要性能瓶颈。第四章将依次阐述该映射框架中每个阶段的CUDA工程实现、共享内存布局的Bank冲突降低设计、以及寄存器级LDL^T的完整伪代码。
 
 
 ---
@@ -511,10 +524,12 @@ $$
 
 | Warp | Lane范围 | 主要职责 | 并行粒度 | 执行模式 |
 |---|---|---|---|---|
-| $w=0$ | $0$--$31$ | FK链式乘法、位姿误差计算、LDL^T求解、LM阻尼更新、收敛判定 | Lane 0串行执行 | 控制流 |
-| $w=1$ | $32$--$63$ | 数值雅可比组装：Lane $32+j$负责第$j$列（$j=0,\ldots,5$），每列2次FK扰动计算 | 6路数据并行 | 数据并行 |
-| $w=2$ | $64$--$95$ | 阻尼正规矩阵构造：Lane $64+(i\times6+j)$负责$\mathbf{H}_{ij}$元素的内积计算，36元素各一线程 | 36路数据并行 | 数据并行 |
-| $w=3$ | $96$--$127$ | 梯度向量$\mathbf{g}$计算、关节更新$\mathbf{q}^{(k+1)} = \Pi_\mathcal{Q}(\mathbf{q}^{(k)} + \alpha\Delta\mathbf{q})$、步长裁剪 | 6路数据并行 | 数据并行 |
+| — | 0 | FK链式乘法、位姿误差计算、LDL^T求解、LM阻尼更新、收敛判定 | 串行执行 | 控制流 |
+| — | 0--5 | 数值雅可比组装：`threadIdx.x=j` 负责第$j$列（$j=0,\ldots,5$），每列2次FK扰动计算 | 6路数据并行 | 数据并行 |
+| — | 0--35 | 阻尼正规矩阵$\mathbf{H}$全元素构造：`row=tid/6, col=tid%6`，36元素各一线程 | 36路数据并行 | 数据并行 |
+| — | 0--5 | 梯度向量$\mathbf{g}$计算、关节更新$\mathbf{q}^{(k+1)} = \Pi_\mathcal{Q}(\mathbf{q}^{(k)} + \alpha\Delta\mathbf{q})$、步长裁剪 | 6路数据并行 | 数据并行 |
+
+> **注：** 上表采用阶段式扁平线程索引（flat threadIdx.x）映射。$\mathbf{H}$ 构造阶段使用 `threadIdx.x=0–35`（36线程），行列索引由 `row=tid/6, col=tid%6` 直接确定——该阶段跨越第 0 个 warp（线程 0–31）及第 1 个 warp 的前 4 个线程（线程 32–35），因此不宜用严格 warp 边界描述。$\mathbf{g}$ 构造和关节更新由 `threadIdx.x=0–5` 负责，控制流由 `threadIdx.x=0` 串行执行。该映射与 CUDA 源码实现完全一致。
 
 该映射方案的核心优势在于：$N$个目标的全部DLS迭代在**单次kernel launch**中完成——消除了第三章上式所指出的逐目标独立kernel launch的累积启动开销，该开销在cuRobo的基准测试中占端到端延迟的15--30\。
 
@@ -525,11 +540,11 @@ $$
 第三章上式将每次DLS迭代归结为阻尼正规方程：
 
 $$
-(\mathbf{J}^\top \mathbf{W}^2 \mathbf{J} + \lambda^2\mathbf{I}) \Delta\mathbf{q} = \mathbf{J}^\top \mathbf{W}^2 \mathbf{e}(\mathbf{q})
+(\mathbf{J}^\top \mathbf{W}^2 \mathbf{J} + \lambda\mathbf{I}) \Delta\mathbf{q} = \mathbf{J}^\top \mathbf{W}^2 \mathbf{e}(\mathbf{q})
 
 $$
 
-记$\mathbf{H} = \mathbf{J}^\top \mathbf{W}^2 \mathbf{J} + \lambda^2\mathbf{I} \in \mathbb{R}^{6\times6}$为阻尼正规矩阵，$\mathbf{g} = \mathbf{J}^\top \mathbf{W}^2 \mathbf{e}(\mathbf{q}) \in \mathbb{R}^6$为加权梯度向量。由于$\mathbf{W}$为对角正定矩阵且$\lambda > 0$，$\mathbf{H}$为对称正定矩阵（SPD），可通过LDL^T分解（无需选主元）求解：
+记$\mathbf{H} = \mathbf{J}^\top \mathbf{W}^2 \mathbf{J} + \lambda\mathbf{I} \in \mathbb{R}^{6\times6}$为阻尼正规矩阵，$\mathbf{g} = \mathbf{J}^\top \mathbf{W}^2 \mathbf{e}(\mathbf{q}) \in \mathbb{R}^6$为加权梯度向量。由于$\mathbf{W}$为对角正定矩阵且$\lambda > 0$，$\mathbf{H}$为对称正定矩阵（SPD），可通过LDL^T分解（无需选主元）求解：
 
 $$
 \mathbf{H} \Delta\mathbf{q} = \mathbf{g}
@@ -628,9 +643,9 @@ B(r, c) = (r \times 12 + c \times 2) \bmod 32
 
 $$
 
-核心问题出现在按列访问时——在阻尼正规矩阵构造阶段（Warp 2负责），线程需计算$\mathbf{J}$的第$i$行与第$j$行的加权内积$\mathbf{H}_{ij} = \sum_{k=0}^{5} w_k^2 J_{ki} J_{kj}$，涉及对$\mathbf{J}$列的并发读取。以列$c$为例，6个元素访问的Bank序列为$\{2c,\; 12+2c,\; 24+2c,\; 36+2c \equiv 4+2c,\; 48+2c \equiv 16+2c,\; 60+2c \equiv 28+2c\}$（模32）。由于$\gcd(12, 32) = 4$，Bank访问模式以$32/4 = 8$为周期重复——在6行访问中，必然发生Bank索引的模冲突，导致2--3路Bank冲突。Nsight Compute实测确认该冲突模式：共享内存吞吐量为理论峰值的约$1/3$。
+核心问题出现在按列访问时——在阻尼正规矩阵构造阶段（`threadIdx.x=0–35` 的 36 个线程负责），线程需计算$\mathbf{J}$的第$i$行与第$j$行的加权内积$\mathbf{H}_{ij} = \sum_{k=0}^{5} w_k^2 J_{ki} J_{kj}$，涉及对$\mathbf{J}$列的并发读取。以列$c$为例，6个元素访问的Bank序列为$\{2c,\; 12+2c,\; 24+2c,\; 36+2c \equiv 4+2c,\; 48+2c \equiv 16+2c,\; 60+2c \equiv 28+2c\}$（模32）。由于$\gcd(12, 32) = 4$，Bank访问模式以$32/4 = 8$为周期重复——在6行访问中，必然发生Bank索引的模冲突，导致2--3路Bank冲突。Nsight Compute实测确认该冲突模式：共享内存吞吐量为理论峰值的约$1/3$。
 
-#### PaddedMat6x8的Bank冲突消除
+#### PaddedMat6x8的Bank冲突降低
 
 PaddedMat6x8将矩阵行步长从6扩展至8（元素），即8个FP64元素 $\times$ 8 bytes = 64 bytes = 16个Bank。形式化定义：对于原始矩阵$\mathbf{J} \in \mathbb{R}^{6\times6}$，其PaddedMat6x8表示为$\widetilde{\mathbf{J}} \in \mathbb{R}^{6\times8}$：
 
@@ -671,7 +686,7 @@ $$
 
 #### 共享内存完整布局
 
-每Block的共享内存分配方案（Nsight Compute实测约1,616 bytes）见表。所有数组均按8元素stride对齐，以确保PaddedMat6x8的Bank冲突消除特性在整个数据路径中一致维持。
+每Block的共享内存分配方案（Nsight Compute实测约1,616 bytes）见表。所有数组均按8元素stride对齐，以确保PaddedMat6x8的Bank冲突降低特性在整个数据路径中一致维持。
 
 **表4 每Block共享内存布局**
 
@@ -695,7 +710,7 @@ $$
 
 **FP32计算段（低精度、高吞吐）：**前向运动学、位姿误差计算和数值雅可比组装在FP32精度下执行。FP32操作在消费级Ada Lovelace架构上的吞吐显著高于FP64，因此将FK/Jacobian/阻尼正规矩阵主体迁移至FP32可以降低计算成本；LDLT关键路径保留FP64以维持稳定性。FP32数据宽度减半同时降低了共享内存和寄存器空间占用。对于数值雅可比而言，$\varepsilon = 10^{-6}$的扰动步长在FP32下引入的相对舍入误差约为$10^{-7}$量级，远小于迭代收敛容差（$10^{-2}$量级），精度损失可忽略。
 
-**FP64累积段（高精度、低吞吐）：**阻尼正规矩阵$\mathbf{H} = \mathbf{J}^\top \mathbf{W}^2 \mathbf{J} + \lambda^2\mathbf{I}$和梯度向量$\mathbf{g} = \mathbf{J}^\top \mathbf{W}^2 \mathbf{e}$的构造涉及36个内积的累加——每个内积为6项加权乘积之和。为抑制FP32累加的截断误差传播，$\mathbf{H}$和$\mathbf{g}$的元素以FP64精度累积。
+**FP64累积段（高精度、低吞吐）：**阻尼正规矩阵$\mathbf{H} = \mathbf{J}^\top \mathbf{W}^2 \mathbf{J} + \lambda\mathbf{I}$和梯度向量$\mathbf{g} = \mathbf{J}^\top \mathbf{W}^2 \mathbf{e}$的构造涉及36个内积的累加——每个内积为6项加权乘积之和。为抑制FP32累加的截断误差传播，$\mathbf{H}$和$\mathbf{g}$的元素以FP64精度累积。
 
 **FP64求解段（高精度、低吞吐）：**LDL^T分解与求解（前述公式）全程使用FP64精度——LDL^T中的除法运算（$L_{ij} = \cdots / D_j$）对数值误差敏感：若$D_j$因FP32舍入而偏小，除数误差经后续回代步骤放大，可能导致步长$\Delta\mathbf{q}$的方向偏差。
 
@@ -728,14 +743,14 @@ $$
 
 从LDL^T求解得到的步长$\Delta\mathbf{q}$在应用于关节更新前需经两道约束：
 
-**（一）步长幅值裁剪。**当$\|\Delta\mathbf{q}\|_\infty > 0.25$ rad时，按比例缩放：
+**（一）步长幅值裁剪。**当$\|\Delta\mathbf{q}\|_\infty > 0.35$ rad时，按比例缩放：
 
 $$
-\Delta\mathbf{q} \leftarrow \Delta\mathbf{q} \cdot \frac{0.25}{\|\Delta\mathbf{q}\|_\infty}
+\Delta\mathbf{q} \leftarrow \Delta\mathbf{q} \cdot \frac{0.35}{\|\Delta\mathbf{q}\|_\infty}
 
 $$
 
-该阈值（0.25 rad $\approx 14.3^\circ$）基于UR10关节的运动范围设定——单次迭代的关节角变化超过此阈值通常表明$\mathbf{H}$条件数恶化或$\lambda$过低，需通过裁剪防止迭代发散。
+该阈值（0.35 rad $\approx 20.1^\circ$）与CUDA源码实现一致——单次迭代的关节角变化超过此阈值通常表明$\mathbf{H}$条件数恶化或$\lambda$过低，需通过裁剪防止迭代发散。
 
 **（二）关节限位投影。**将更新后的关节角投影至关节限位可行域$\mathcal{Q} = [\mathbf{q}_{\min}, \mathbf{q}_{\max}]$：
 
@@ -754,7 +769,7 @@ $$
 
 #### 与第三章数学基础的衔接
 
-本章的全部CUDA工程实现可追溯至第三章建立的数学框架：Block级并行映射对应第三章第3.5节的Block/Warp/Lane三级分解；寄存器LDL^T求解对应第三章上式的SPD矩阵分解；PaddedMat6x8的Bank冲突消除服务于第三章上式的阻尼正规矩阵高效构造；混合精度计算路径的FP32/FP64边界划分基于第三章上式的FK运算复杂度分析和上式的Jacobian扰动精度需求；自适应阻尼策略直接实现第三章前述公式的数学形式。这一从数学推导到硬件映射的完整链路，为第五章的实验验证提供了可逐项量化的设计分解基础。
+本章的全部CUDA工程实现可追溯至第三章建立的数学框架：Block级并行映射对应第三章第3.5节的Block/Warp/Lane三级分解；寄存器LDL^T求解对应第三章上式的SPD矩阵分解；PaddedMat6x8的Bank冲突降低服务于第三章上式的阻尼正规矩阵高效构造；混合精度计算路径的FP32/FP64边界划分基于第三章上式的FK运算复杂度分析和上式的Jacobian扰动精度需求；自适应阻尼策略直接实现第三章前述公式的数学形式。这一从数学推导到硬件映射的完整链路，为第五章的实验验证提供了可逐项量化的设计分解基础。
 
 
 ---
@@ -811,9 +826,9 @@ $$
 
 ### 6.1.1 吞吐量与收敛率总表
 
-表 6.1 汇总了 CUDA B5（混合精度）与 cuRobo 在 N=100 至 N=5000 四个批量级别上的吞吐、GPU 时间与收敛率。两求解器统一采用 Medium 阈值（10 mm / 5°）。所有数据为 repeat=30、zero_seed 的算术均值。
+表 6.1 汇总了 CUDA B5（混合精度）与 cuRobo 在 N=100 至 N=5000 四个批量级别上的吞吐、测量时间与收敛率。两求解器统一采用 Medium 阈值（10 mm / 5°）。所有数据为 repeat=30、zero_seed 的算术均值。
 
-| N | Solver | Repeat | GPU时间 (ms) | Throughput targets/s | ConvRate | Avg Iters |
+| N | Solver | Repeat | 测量时间 (ms) | Throughput targets/s | ConvRate | Avg Iters |
 |---:|---:|---:|---:|---:|---:|---:|
 | 100 | **cuda (B5 mixed)** | 30 | **0.890** | **112,414** | 1.000 | 14.47 |
 | 100 | curobo | 30 | 32.08 | 3,118 | 1.000 | — |
@@ -824,7 +839,7 @@ $$
 | 5000 | **cuda (B5 mixed)** | 30 | **29.641** | **168,683** | 0.9998 | 15.24 |
 | 5000 | curobo | 30 | 32.25 | 155,059 | 1.000 | — |
 
-> 两求解器统一采用 Medium 阈值（ε_p=0.01 m, ε_R=0.0873 rad ≈ 5°）。cuRobo 的 GPU 时间由 host 端 `time.perf_counter()` 测量（含 Python→C++→CUDA 全调用栈），CUDA B5 的 GPU 时间由 CUDA event 测量（纯 kernel 执行时间）。cuRobo 不暴露内部迭代次数，标记为 "—"。B2/B3 等消融配置的完整数据见 6.3 节消融实验，其收敛阈值与主表不同（见该节说明），不参与本节主性能排名。
+> 两求解器统一采用 Medium 阈值（ε_p=0.01 m, ε_R=0.0873 rad ≈ 5°）。表中"测量时间"对 CUDA B5 为 CUDA event 统计的 kernel-only time；对 cuRobo 为 host 端 `time.perf_counter()` 统计的 solve_pose 调用时间（含 Python→C++→CUDA 全调用栈）。该表反映统一 benchmark 下的工程测量吞吐，不代表两个求解器内部 kernel 的严格同口径对比。cuRobo 不暴露内部迭代次数，标记为 "—"。B2/B3 等消融配置的完整数据见 6.3 节消融实验，其收敛阈值与主表不同（见该节说明），不参与本节主性能排名。
 
 ### 6.1.2 加速比汇总
 
@@ -977,34 +992,35 @@ CUDA B5 在三档阈值下的稳定表现源于三个架构决策的协同效应
 
 **CUDA B5：教科书级线性扩展。** 在相同的 12 个 N 值上，CUDA B5 的吞吐保持在 148k–174k 窄区间（±8%，以中位数 166k 为基准），GPU kernel 时间与 N 的线性拟合 R² > 0.999。每 target 计算量完全确定（FK + Jacobian + LDLT + Update 在固定迭代轮数内完成），无 block 间通信，无动态内存分配，无 GPU-CPU 同步——工作量线性增长 → 执行时间线性增长 → 吞吐恒定。只要 GPU 有足够的全局内存容纳所有 target 的中间状态（每 target 约 2 KB，N=10⁵ 时约 200 MB），线性扩展预计将持续。
 
-**cuRobo 振荡退化的机制分析。** 为理解振荡现象的可能成因，本文对 cuRobo 的 `solve_pose()` 实现进行了源码级分析（cuRobo `curobo/_src/solver/solver_ik.py:651-683`）。关键观测如下：
+**cuRobo 振荡退化的机制分析。** 为排查振荡现象的成因，本文进行了系统的诊断实验，包括：顺序/随机顺序复现扫描、独立进程隔离测试、固定 `max_batch_size=10000` 排查、PyTorch CUDA 显存统计记录以及 Nsight Systems CUDA API 级 profiling（N=4000 退化点 vs N=5000 正常点）。
 
-```python
-# cuRobo solve_pose() 核心逻辑（简化）
-max_batch = self.config.max_batch_size   # 本文设置 = N
-batch_size = goal_tool_poses.batch_size  # = N
-needs_pad = batch_size < max_batch       # = False (batch_size == max_batch)
-if needs_pad:                            # 不执行
-    goal_tool_poses, ... = _pad_batch_inputs(...)
-batch_size = max_batch                   # = N
-result = self._solve_impl(solve_state=..., ...)  # 单次 GPU 调用
-```
+诊断实验的关键发现如下：
 
-在本文配置下（`max_batch_size=N`，`batch_size=N`），cuRobo 不做内部 sub-batch 拆分——整个 batch 在单次 `_solve_impl()` 中处理。因此，230ms 的退化时间不是"多个 sub-batch 累计耗时"，而是**单次 `_solve_impl()` 因 GPU 内存管理开销而被阻塞**。
+**（1）退化与 N 值内在相关，非运行顺序或进程状态污染。** 三组随机运行顺序均产生完全相同的退化模式（N=4000, 7000, 9000, 10000 稳定退化，其余 N 值稳定正常）。每个 N 值在独立 Python 子进程（完全重置 PyTorch allocator、cuRobo solver 和 CUDA context）中运行时，退化模式不变。退化与 N 值本身（及其关联的 tensor shape、内部执行路径）相关，而非进程内 allocator 缓存累积或 solver 状态残留。
 
-基于以上源码证据和实测退化特征，本文提出退化根因假设：**PyTorch CUDA Caching Allocator 的内存碎片化/重分配**。cuRobo 在初始化时为 `max_batch_size` 预分配 GPU workspace，大小约正比于 N（~40 KB/target，含 particle 状态、L-BFGS 历史、中间 tensor）。当 workspace 大小跨越 PyTorch caching allocator 的内部缓存段边界时（通常位于 128MB, 256MB, 384MB 等对齐边界），allocator 触发 `cudaFree` + `cudaMalloc` 重分配和 CUDA stream 同步，耗时约 200ms。支持此假设的证据包括：
+**（2）退化不由 `max_batch_size` / workspace 大小决定。** 固定 `max_batch_size=10000`（所有 N 值共享相同的 solver workspace 和 tensor shape）后，N=4000, 7000, 9000, 10000 仍然退化至 ~230ms，而 N=5000, 6000, 8000 保持 ~32ms 正常。这排除了 workspace 大小变化、CUDA graph shape 变化和 tensor shape 分配作为主要原因。
 
-1. **退化幅度（~200ms）与 CUDA 内存重分配典型耗时一致。** 所有退化点的额外开销均约 200ms（218–32=186ms, 228–32=196ms, 236–32=204ms, 239–32=207ms），这与 `torch.cuda.empty_cache()` + 重新分配 200–400MB GPU 内存的典型耗时（150–250ms on RTX 4090）高度吻合。
+**（3）退化与 GPU 显存分配量无相关性。** 显存统计显示，正常 N 值（N=5000, allocated=243 MB）使用的显存多于退化 N 值（N=4000, allocated=196 MB）。所有 N 值下均未出现 CUDA OOM 或 `cudaMalloc` 重试。退化不由显存压力驱动。
 
-2. **退化点的收敛率轻微下降（1.000→0.9998）。** 暗示 GPU 内存重分配改变了 tensor 的内存对齐，影响了浮点运算的舍入路径，导致极个别 target 的最终迭代步产生微小偏差。
+**（4）Nsight Systems 揭示的直接证据：退化点 CUDA kernel 启动量异常增加。** Nsight Systems 对 N=4000（退化）和 N=5000（正常）的 CUDA API trace 对比揭示了根本差异：
 
-3. **退化与 N 值无单调关系。** 内存碎片化取决于分配大小与缓存段边界的对齐关系，而非 N 值本身。N=4000（~160MB workspace）可能恰好跨越 128MB 边界，N=5000（~200MB）可能完全落在 128–256MB 段内，N=7000（~280MB）可能恰好跨越 256MB 边界——这与观测到的振荡模式（4000→退化, 5000→正常, 7000→退化, 8000→正常, 9000→退化）在定性上一致。
+| CUDA API 调用 | N=4000（退化） | N=5000（正常） | 比值 |
+|:---|:---:|:---:|:---:|
+| 总 kernel 启动次数 | 14,108 | 5,945 | **2.37×** |
+| `cudaEventRecord` 调用次数 | 5,069 | 390 | **13.0×** |
+| `cudaStreamWaitEvent` 调用次数 | 4,985 | 350 | **14.2×** |
+| `cudaMalloc` 调用次数 | 41 | 45 | 0.91× |
+| `cudaFree` 调用次数 | 1 | 1 | 1.00× |
 
-> **重要声明：** 本文未使用 Nsight Systems 记录 CUDA API trace，也未获取 `torch.cuda.memory_summary()` 的内存分配日志。因此，上述对退化机制的解释为基于 cuRobo 源码路径、实测退化时间特征（~200ms 固定增量、二元状态跳变、收敛率轻微伴随波动）和 PyTorch CUDA Caching Allocator 已知行为模式的**合理推断**，而非通过直接 profiling 证据确定的最终根因。精确机制的确认需要 cuRobo 维护者的协作或额外的 CUDA API 级性能追踪。
+关键发现：N=4000 虽然处理的目标数更少（4000 < 5000），却启动了 **2.37 倍**的 CUDA kernel 和 **13–14 倍**的跨 kernel 同步事件。`cudaMalloc`/`cudaFree` 的开销在两个 N 值下均微不足道（< 1% CUDA API 总时间），**明确排除了 PyTorch CUDA Caching Allocator 作为退化主因的假设**。
 
-**CUDA B5 的结构免疫性。** CUDA B5 对此类问题完全免疫，原因有三：(1) 每 target 固定 2KB 中间状态（裸 `cudaMalloc` 一次性分配），不存在 caching allocator 的碎片化问题；(2) 无 PyTorch 依赖——不经过任何第三方内存管理器；(3) 单 kernel 全迭代封装——kernel launch 后 GPU 完全自治，host 侧在 kernel 执行期间不进行任何内存操作。这三个设计决策使 CUDA B5 在任何 N 值下的性能行为完全可预测。
+**（5）退化根因判断：cuRobo 内部 sub-batching/tiling 策略的批量依赖性。** 综合以上证据，退化最可能源于 cuRobo 求解器内部的 sub-batch 划分或 tile 大小选择策略——该策略依赖于实际的 batch_size 且具有**非单调性**：某些 N 值触发细粒度的 sub-batch 划分（大量小 kernel + 密集事件同步），相邻的 N 值则使用粗粒度划分（少量大 kernel），导致 kernel launch 和同步开销相差 2× 以上。kernel launch 数量的剧烈差异直接解释了 ~200ms 的额外 host 端耗时——大量细粒度 kernel 的串行 launch 和事件同步累积为显著的 host 端阻塞。
 
-**实践意义。** 全量程对比数据揭示了比"cuRobo 在大批量退化"更微妙的现实：cuRobo 在某些 N 值（如 6000, 8000）实际上是两种求解器中更快的（加速比 0.91×, 0.70×），但在另一些 N 值（如 4000, 7000, 9000）因 GPU 内存管理问题而退化 5–9×。这种**不可预测的振荡**——而非简单的性能差距——才是实际工程中更棘手的问题：用户无法事先知道给定的 batch size 是否会触发退化模式，除非对所有可能的 N 值进行预扫描。CUDA B5 消除了这一不确定性：其吞吐在所有 N 值下可从事先的计算直接预测，无需任何预扫描或参数调优。
+> **重要声明：** 上述退化机制解释基于 Nsight Systems CUDA API trace 的直接 profiling 证据（kernel 启动计数、事件同步计数）以及顺序敏感性、进程隔离和固定 `max_batch_size` 排查实验的系统性排除结果。cuRobo 内部 sub-batch 划分的具体代码路径和决策逻辑对本研究为黑盒——精确触发条件的确认需要 cuRobo 维护者的协作或对 cuRobo 求解器内部进行源码级 instrumentation。此外，本文诊断实验使用 cuRobo 0.8.0（原始 benchmark 数据在 cuRobo 0.12.0 上采集），不同版本间的 padding 行为和 kernel 启动策略可能存在差异。因此，本文将退化现象定位为"cuRobo 在该 benchmark 配置下的 batch-size-sensitive host-call latency spike"，其直接机制为退化 N 值下 CUDA kernel 启动和事件同步数量的异常增加，而非将其表述为 cuRobo 算法本身的固有缺陷。
+
+**CUDA B5 的结构免疫性。** CUDA B5 对此类问题完全免疫，原因有三：(1) 单 kernel 全迭代封装——整个 DLS 迭代循环在单次 kernel launch 中完成，不存在 sub-batch 划分或多次 kernel launch，因此 kernel launch 数量恒为 1（per target block = N 个 block 在同一 launch 中）；(2) 无跨 kernel 同步——所有线程块在 kernel 内部通过 `__syncthreads()` 同步，不涉及 `cudaEventRecord`/`cudaStreamWaitEvent` 等 host 端事件机制；(3) 性能完全可预测——每 target 固定 2KB 中间状态（裸 `cudaMalloc` 一次性分配），GPU 时间与 N 严格线性（R² > 0.999），吞吐在任何 N 值下均可从事先的计算精确预测。
+
+**实践意义。** 全量程对比数据揭示了比"cuRobo 在大批量退化"更微妙的现实：cuRobo 在某些 N 值（如 6000, 8000）实际上是两种求解器中更快的（加速比 0.91×, 0.70×），但在另一些 N 值（如 4000, 7000, 9000）因内部 kernel launch 策略的批量依赖性而退化 5–9×。这种**不可预测的振荡**——而非简单的性能差距——才是实际工程中更棘手的问题：用户无法事先知道给定的 batch size 是否会触发退化模式，除非对所有可能的 N 值进行预扫描。CUDA B5 消除了这一不确定性：其吞吐在所有 N 值下可从事先的计算直接预测，无需任何预扫描或参数调优。
 
 ## 6.3 消融实验结果
 
@@ -1030,17 +1046,17 @@ B3 至 B4 增加步长钳位与分支对齐，B5 在 B3 的基础上切换为混
 
 ### 6.3.2 N=100（小批量，grid 未满）
 
-| Level | Throughput (targets/s) | GPU时间 (ms) | Avg Iters | Conv Rate | vs Prev |
+| Level | Throughput (targets/s) | 测量时间 (ms) | Avg Iters | Conv Rate | vs Prev |
 |:-----:|:---------------------:|:----------:|:---------:|:---------:|:-------:|
 | B0 | 7,589 | 13.18 | 31.36 | 0.830 | — |
 | **B3** | **51,361** | **1.95** | 12.85 | 1.000 | **+577%** |
 | **B5** | **113,097** | **0.88** | 14.47 | 1.000 | **+120%** |
 
-> B0/B3/B5 统一采用 Medium 阈值（10mm/5°）。B0 在 Medium 阈值下收敛率仅 0.830（固定 λ 无法满足更严格的精度要求），平均迭代 31.4 次/目标，其中 17% 的目标触及 max_iter=160 上限。B3 引入自适应阻尼后收敛率恢复至 1.000，迭代次数锐减至 12.85，吞吐提升 5.8 倍——这是所有消融变更中对收敛率影响最大的单一因素。B5 在 B3 基础上叠加混合精度，在保持收敛率 1.000 的同时吞吐再提升 1.2 倍，平均迭代 14.47 次。B1（常量内存）和 B2（PaddedMat 消除 bank conflict）在 N=100 条件下的吞吐增益合计 <5%（基于旧 30° 阈值数据），B4（步长钳位+分支对齐）和 B6（CUDA Graph）因引入额外开销而吞吐低于 B5。以上次要级别的边际贡献详见消融分析文本。
+> B0/B3/B5 统一采用 Medium 阈值（10mm/5°）。B0 在 Medium 阈值下收敛率仅 0.830（固定 λ 无法满足更严格的精度要求），平均迭代 31.4 次/目标，其中 17% 的目标触及 max_iter=160 上限。B3 引入自适应阻尼后收敛率恢复至 1.000，迭代次数锐减至 12.85，吞吐提升 5.8 倍——这是所有消融变更中对收敛率影响最大的单一因素。B5 在 B3 基础上叠加混合精度，在保持收敛率 1.000 的同时吞吐再提升 1.2 倍，平均迭代 14.47 次。B1（常量内存）和 B2（PaddedMat 降低 bank conflict）在 N=100 条件下的吞吐增益合计 <5%（基于旧 30° 阈值数据），B4（步长钳位+分支对齐）和 B6（CUDA Graph）因引入额外开销而吞吐低于 B5。以上次要级别的边际贡献详见消融分析文本。
 
 ### 6.3.3 N=500（中批量）
 
-| Level | Throughput (targets/s) | GPU时间 (ms) | Avg Iters | Conv Rate | vs Prev |
+| Level | Throughput (targets/s) | 测量时间 (ms) | Avg Iters | Conv Rate | vs Prev |
 |:-----:|:---------------------:|:----------:|:---------:|:---------:|:-------:|
 | B0 | 9,896 | 50.52 | 79.74 | 0.522 | — |
 | **B3** | **62,384** | **8.01** | 13.78 | 1.000 | **+530%** |
@@ -1050,7 +1066,7 @@ B3 至 B4 增加步长钳位与分支对齐，B5 在 B3 的基础上切换为混
 
 ### 6.3.4 N=5000（大批量）
 
-| Level | Throughput (targets/s) | GPU时间 (ms) | Avg Iters | Conv Rate | vs Prev |
+| Level | Throughput (targets/s) | 测量时间 (ms) | Avg Iters | Conv Rate | vs Prev |
 |:-----:|:---------------------:|:----------:|:---------:|:---------:|:-------:|
 | B0 | 12,507 | 399.79 | 73.04 | **0.564** | — |
 | **B3** | **66,050** | **75.70** | 13.69 | 1.000 | **+428%** |
@@ -1086,7 +1102,7 @@ B3 至 B4 增加步长钳位与分支对齐，B5 在 B3 的基础上切换为混
 
 **（四）B1/B2/B4/B6 的边际贡献——基于旧阈值数据的参考评估。** 以下四项消融变更未在 Medium 阈值下重新测量，其边际贡献的定量评估基于旧 30° 阈值数据，方向性结论在 Medium 阈值下应仍然成立：
 
-- **B1（常量内存）与 B2（PaddedMat 消除 bank conflict）**：在 N=100 条件下合计贡献 <5% 吞吐提升。UR10 的 FK 工作集约 912 bytes，即使不经优化的常量内存路径也能被 L1 缓存高效容纳。在大批量（N≥500）上收益可忽略。
+- **B1（常量内存）与 B2（PaddedMat 降低 bank conflict）**：在 N=100 条件下合计贡献 <5% 吞吐提升。UR10 的 FK 工作集约 912 bytes，即使不经优化的常量内存路径也能被 L1 缓存高效容纳。在大批量（N≥500）上收益可忽略。
 - **B4（步长钳位 + 分支对齐）**：在所有测试批量上 B4 吞吐均低于 B3（-15% 至 -20%），收敛率不变（1.000）。0.35 rad 的步长限制对 UR10 关节空间偏保守，增加的边界检查和 wrap 逻辑构成纯计算开销。因此 B5 关闭了这两项优化。
 - **B6（CUDA Graph replay）**：N=100 条件下 B6 吞吐较 B5 提升约 3.7%，主要反映 launch/replay 机制变化；event-based 计时显示 `cudaGraphLaunch` 的 kernel 执行时间与直接 launch 在测量噪声范围内一致（差异 <0.2%），表明当前 kernel 配置下 launch overhead 不是性能瓶颈。
 
@@ -1199,7 +1215,7 @@ cuRobo 的核心设计在算法层面——通过 L-BFGS 优化器与 particle �
 
 **（2）性能可预测性是大批量场景的关键需求。** cuRobo 的正常模式在大批量下（N≥5000）实际上提供了比 CUDA B5 更高的吞吐（最高 1.43× at N=8000）。然而，其退化模式的不可预测性——你不知道下一次求解是 32ms 还是 230ms——对需要稳定延迟的上层系统（如机器人控制回路）构成实质性风险。CUDA B5 虽然在大批量正常模式下略慢于 cuRobo（0.70×–0.91×），但其吞吐在任何 N 值下均可从事先的计算精确预测，无需预扫描或运行时试探。对于离线批量求解场景，若稳定性优先于峰值性能，CUDA B5 是更可靠的选择；若峰值性能优先且允许对每个 batch size 进行预测试，cuRobo 的正常模式在 N≥5000 时具有吞吐优势。
 
-**（3）GPU 内存管理应被视为求解器性能的独立评估维度。** cuRobo 的退化模式——一种可能机制为 PyTorch CUDA Caching Allocator 在特定分配大小下的碎片化行为（详见 6.2.4 节的假设与声明）——具有超出本文 benchmark 的方法论意义。它表明，在评估基于 PyTorch 等高层框架的 GPU 求解器时，"在 5 个典型 N 值上测量平均吞吐"可能漏掉关键的异常点。建议 GPU IK benchmark 采用细粒度全量程扫描（步长 ≤ 1000）以捕获此类振荡行为。
+**（3）kernel launch 策略应被视为求解器性能的独立评估维度。** cuRobo 的退化模式——Nsight Systems 揭示其直接机制为退化 N 值下 kernel 启动和事件同步数量的异常增加（2.37× kernel launch, 13–14× event sync，详见 6.2.4 节）——具有超出本文 benchmark 的方法论意义。它表明，在评估基于高层框架的 GPU 求解器时，"在 5 个典型 N 值上测量平均吞吐"可能漏掉关键的异常点。建议 GPU IK benchmark 采用细粒度全量程扫描（步长 ≤ 1000）以捕获此类振荡行为。
 
 综合以上分析，本文的 CUDA DLS 路线在 N=100–10000 的全量程批量范围内提供了**可预测**的吞吐水平——虽然在大批量正常模式下略慢于 cuRobo（0.70×–0.91×），但其吞吐的批量无关性（±8% 波动）和 GPU 时间的严格线性（R² > 0.999）使其成为两种求解器中唯一具有完全确定性性能行为的方案。对更大批量（N>10⁴）、多 seed 策略以及 7-DOF 冗余机械臂的性能边界，仍需进一步的实验验证。
 
@@ -1246,9 +1262,9 @@ Panda 验证的作用是证明本文的 CUDA 映射并不依赖于“恰好是 6
 
 方法上，本文从 DLS 正规方程出发，将每次迭代归结为固定规模的 6×6 阻尼正规矩阵线性系统。CUDA 实现采用 1 block/target、128 threads/block 的并行映射，block 内按 4 warp 分工完成 FK/误差、数值 Jacobian、阻尼正规矩阵构造和 LDLT 求解；共享内存使用 PaddedMat6x8 布局以缓解 Bank 冲突，核心线性求解采用寄存器级 FP64 LDLT，而 FK 和 Jacobian 等主体计算运行在 FP32 路径上以降低计算成本。
 
-实验结果表明：B0-B6 消融在 Medium 阈值（10mm/5°）下证实：内存层次优化（B1 常量内存、B2 PaddedMat6x8）的收益有限（合计 <5%），自适应阻尼（B3）在固定 λ 的 B0 基础上提供 4–6× 的收敛驱动吞吐提升——是所有消融变更中对收敛率影响最大的单一因素，混合精度（B5）在 B3 基础上再提供 120–149% 的吞吐提升且收敛率无损（≥0.998）；三档组合阈值扫描（Loose 30 mm/10° → Medium → Strict 5 mm/1°）表明 CUDA B5 吞吐波动仅 ±6%，收敛率维持 0.998+，即使在 Strict 极端条件下仍保持 1.05× cuRobo 的加速比——这一阈值鲁棒性来源于单 kernel 零同步架构、FP64 LDLT 数值稳定性和寄存器固定成本的协同效应；N=100→10000 全量程扫描（12 个 N 值，步长 1000）揭示了两类求解器的系统性差异：CUDA B5 吞吐保持 148k–174k（±8%），GPU 时间与 N 严格线性（R²>0.999），而 cuRobo 在 4/12 个 N 值上触发 ~230ms 退化模式（7× 正常求解时间），呈现"正常→退化→恢复→再退化"的批量振荡——N=10000 时 B5/cuRobo 加速比达 3.96×，修正了此前基于 N≤5000 数据的"趋同"外推，揭示了本文专用 CUDA kernel 相比高层框架型 GPU IK 实现在批量扩展确定性与性能可预测性上的结构性优势；Nsight Compute profiling 证明 kernel 主要受计算吞吐与寄存器压力约束，而非 DRAM 带宽约束；7DOF Panda 的正确性验证表明该 CUDA 结构可保持正确收敛后迁移至不同自由度平台。
+实验结果表明：B0-B6 消融在 Medium 阈值（10mm/5°）下证实：内存层次优化（B1 常量内存、B2 PaddedMat6x8）的收益有限（合计 <5%），自适应阻尼（B3）在固定 λ 的 B0 基础上提供 4–6× 的收敛驱动吞吐提升——是所有消融变更中对收敛率影响最大的单一因素，混合精度（B5）在 B3 基础上再提供 120–149% 的吞吐提升且收敛率无损（≥0.998）；三档组合阈值扫描（Loose 30 mm/10° → Medium → Strict 5 mm/1°）表明 CUDA B5 吞吐波动仅 ±6%，收敛率维持 0.998+，即使在 Strict 极端条件下仍保持 1.05× cuRobo 的加速比——这一阈值鲁棒性来源于单 kernel 零同步架构、FP64 LDLT 数值稳定性和寄存器固定成本的协同效应；N=100→10000 全量程扫描（12 个 N 值，步长 1000）揭示了两类求解器的系统性差异：CUDA B5 吞吐保持 148k–174k（±8%），GPU 时间与 N 严格线性（R²>0.999），而 cuRobo 在 4/12 个 N 值上触发 ~230ms 退化模式（7× 正常求解时间），呈现"正常→退化→恢复→再退化"的批量振荡——诊断实验（随机顺序、进程隔离、固定 max_batch_size）排除运行顺序和进程状态污染后，Nsight Systems CUDA API trace 进一步表明退化 N 值的 kernel 启动数为正常 N 值的 2.37 倍、事件同步调用数高达 13–14 倍，而 cudaMalloc/cudaFree 开销微不足道（< 1%），将退化直接机制定位于 cuRobo 内部 sub-batch 划分策略的批量依赖性而非 PyTorch 内存分配器——N=10000 时 B5/cuRobo 加速比达 3.96×，修正了此前基于 N≤5000 数据的"趋同"外推，揭示了本文专用 CUDA kernel 相比高层框架型 GPU IK 实现在批量扩展确定性与性能可预测性上的结构性优势；Nsight Compute profiling 证明 kernel 主要受计算吞吐与寄存器压力约束，而非 DRAM 带宽约束；7DOF Panda 的正确性验证表明该 CUDA 结构可保持正确收敛后迁移至不同自由度平台。
 
-本文的局限性包括：仅以 UR10（6DOF）为完整 benchmark 主平台，Panda（7DOF）仅完成正确性验证而未建立同等规模的性能基准；cuRobo 对比是基于统一模型、目标、种子和阈值的任务级比较，不等同于等计算量、等优化器结构的组件级比较；cuRobo N=10000 退化机制的分析基于公开文献和实测 scaling 行为的合理推断，cuRobo 的内部实现对本文为黑盒，其开发者在统一 benchmark 框架下通过参数调优可能获得更优的 N=10000 性能；当前实现仍保留 FP64 LDLT 关键路径，寄存器压力较高。后续工作将围绕多 seed 组织方式、7DOF 完整 benchmark、更大批量（N>10⁴）性能边界、寄存器压力优化以及 FP32 LDLT 加 iterative refinement 等方向展开。
+本文的局限性包括：仅以 UR10（6DOF）为完整 benchmark 主平台，Panda（7DOF）仅完成正确性验证而未建立同等规模的性能基准；cuRobo 对比是基于统一模型、目标、种子和阈值的任务级比较，不等同于等计算量、等优化器结构的组件级比较；cuRobo 退化机制虽通过 Nsight Systems 定位至 kernel 启动和事件同步数量的异常增加（2.37× kernel launch, 13–14× event sync），但 cuRobo 内部 sub-batch 划分的具体代码路径和决策逻辑对本文为黑盒——精确触发条件的确认需 cuRobo 维护者的协作或源码级 instrumentation；此外诊断实验所用 cuRobo 版本（0.8.0）与原始 benchmark 数据版本（0.12.0）不完全一致，不同版本间的内部实现差异可能影响退化行为的具体表现；当前实现仍保留 FP64 LDLT 关键路径，寄存器压力较高。后续工作将围绕多 seed 组织方式、7DOF 完整 benchmark、更大批量（N>10⁴）性能边界、寄存器压力优化以及 FP32 LDLT 加 iterative refinement 等方向展开。
 
 ## 参考文献
 
