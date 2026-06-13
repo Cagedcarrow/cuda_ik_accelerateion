@@ -144,26 +144,19 @@ cuda_ik_accelerateion/
 │   │
 │   └── CMakeLists.txt                          # 构建系统：10 个消融级别可执行文件
 │
-├── cuda_low_level_optimization/                # 旧版第一代（自定义 UR10+铲斗）
-│   ├── src/                                    #   CUDA 内核（2,751 行）
-│   ├── test/                                   #   测试程序 + 273 目标数据集
-│   └── docs/                                   #   27 篇技术参考文档
-│
-├── docs/                                       # 中央文档
-│   ├── 项目总览/                                #   ★★★ 权威参考标准（5 份文档）
-│   │   ├── README.md                           #     总索引 + 快速查找表
-│   │   ├── 01-实验数据目录.md                    #     实验数据完整地图
-│   │   ├── 02-源代码目录.md                      #     源代码完整地图
-│   │   ├── 03-论文贡献与核心声明.md               #     贡献、创新点、性能声明、黑名单
-│   │   └── 04-GPU架构与CUDA实现细节.md           #     GPU 架构参数、CUDA 特性、kernel 设计
-│   ├── paper/                                  #   论文草稿
-│   ├── 专利/                                   #   专利技术交底书
-│   └── 修改意见/                                #   审稿修改意见
-│
-└── benchmark/          [gitignored]            # 外部求解器克隆
-    ├── curobo/                                 #   NVIDIA cuRobo (PyTorch GPU IK)
-    ├── hjcd_ik/                                #   HJCD-IK (PyTorch GPU IK)
-    └── pyroki/                                 #   PyRoki (JAX GPU IK)
+└── docs/                                       # 中央文档
+    ├── 项目总览/                                #   ★★★ 权威参考标准（5 份文档）
+    │   ├── README.md                           #     总索引 + 快速查找表
+    │   ├── 01-实验数据目录.md                    #     实验数据完整地图
+    │   ├── 02-源代码目录.md                      #     源代码完整地图
+    │   ├── 03-论文贡献与核心声明.md               #     贡献、创新点、性能声明、黑名单
+    │   └── 04-GPU架构与CUDA实现细节.md           #     GPU 架构参数、CUDA 特性、kernel 设计
+    ├── paper/                                  #   论文（paper_complete.md 为最新版）
+    ├── 专利/                                   #   专利技术交底书 + 6 张附图描述
+    ├── data/                                   #   论文图表 CSV 数据副本
+    ├── logs/                                   #   当前项目实验日志
+    ├── 优势/                                   #   CUDA vs cuRobo 结构化对比分析
+    └── goal.txt                               #   项目需求规格文档
 ```
 
 ---
@@ -500,7 +493,9 @@ python3 plot_all_figures.py
 | [`docs/项目总览/04-GPU架构与CUDA实现细节.md`](docs/项目总览/04-GPU架构与CUDA实现细节.md) | GPU 架构参数、线程映射、寄存器预算、混合精度 |
 | [`docs/paper/paper_complete.md`](docs/paper/paper_complete.md) | 论文最新完整版 |
 | [`docs/专利/技术交底书.md`](docs/专利/技术交底书.md) | 专利技术交底书 |
-| [`cuda_low_level_optimization/docs/`](cuda_low_level_optimization/docs/) | 27 篇 CUDA 技术参考文档（第一代） |
+| [`docs/优势/cuda_vs_curobo_结构性优势.md`](docs/优势/cuda_vs_curobo_结构性优势.md) | CUDA vs cuRobo 结构化对比分析 |
+| [`docs/data/README.md`](docs/data/README.md) | 论文图表 CSV 数据目录 |
+| [`docs/goal.txt`](docs/goal.txt) | 项目需求规格文档 |
 
 ---
 
@@ -518,12 +513,10 @@ Benchmark 框架专为公平的跨求解器对比设计。添加新求解器的�
 
 ---
 
-## 11. 旧版项目 —— 第一代概念验证
+## 11. 历史版本
 
-[`cuda_low_level_optimization/`](cuda_low_level_optimization/) 目录包含原始的自定义 UR10 + 铲斗装配体 CUDA IK 求解器（非标准机器人）。这是验证单 kernel 方案可行性的概念验证，实现了相对 CPU KDL 约 **960 倍加速**（273 个目标：CPU 6.2s → GPU 6.4ms）。
-
-其核心 CUDA 技术（阶段式并行分工、PaddedMat6x8、自适应阻尼、寄存器 LDLᵀ）已迁移并泛化至 `standard_robot_cuda_ik/`。旧版代码留存备查，其 27 篇技术文档仍是 CUDA 内核内部实现最详尽的参考资料。
+本项目的第一代概念验证代码（自定义 UR10 + 铲斗装配体 CUDA IK 求解器，相对 CPU KDL 约 960 倍加速）已归档至 `/mnt/linuxdata/cuda数据备份/cuda_low_level_optimization/`。其核心 CUDA 技术（阶段式并行分工、PaddedMat6x8、自适应阻尼、寄存器 LDLᵀ）已迁移并泛化至当前主线 `standard_robot_cuda_ik/`。
 
 ---
 
-*最后更新：2026-06-12 | 测试平台：NVIDIA GeForce RTX 4060 Laptop GPU (Ada Lovelace, sm_89) | CUDA Toolkit 12.6 | GCC 11.4.0*
+*最后更新：2026-06-14 | 测试平台：NVIDIA GeForce RTX 4060 Laptop GPU (Ada Lovelace, sm_89) | CUDA Toolkit 12.6 | GCC 11.4.0*
