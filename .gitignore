@@ -115,12 +115,10 @@ ehthumbs.db
 .hidden
 
 # ==============================================================================
-# External Dependencies (nested cloned repositories)
+# External Reference Solvers (cloned for source code reading, not for running)
 # ==============================================================================
-benchmark/
+external/
 
 # ==============================================================================
 # Miscellaneous
 # ==============================================================================
-/=9.8.0
-/texput.log
