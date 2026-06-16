@@ -1,4 +1,0 @@
-variant,maxrregcount,registers_per_thread,spill_stores,spill_loads,local_memory_bytes,achieved_occupancy,gpu_stream_ms_N1000,gpu_stream_ms_N5000,strict_sr_N1000,pos_p95_all_N1000,near_limit_N1000,pass_quality,pass_perf,notes
-baseline,,184,0,0,0,,601.443764,2980.47907,0.954,4.56313281,0.007,1,0,ptxas values from enhance_build.log; r160/r128 introduce spills if nonzero
-r160,160,160,116,168,880,,590.225413,2943.2143,0.954,4.56313281,0.007,1,1,ptxas values from enhance_build.log; r160/r128 introduce spills if nonzero
-r128,128,128,244,304,976,,599.247424,2987.44468,0.954,4.56313281,0.007,1,1,ptxas values from enhance_build.log; r160/r128 introduce spills if nonzero

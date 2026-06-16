@@ -1,3 +1,0 @@
-variant,N,correctness_pass,strict_sr,pos_p95_all_mm,near_limit,gpu_stream_ms,speedup_vs_baseline,registers_per_thread,achieved_occupancy,sm_utilization,dram_throughput,local_memory_spill,branch_divergence,warp_execution_efficiency,main_failure_reason,paper_usage,attempt_returncode
-opt4_warp_per_seed,100,0,,,,,,,,,,,,,original one-warp-per-seed kernel was not promoted; variant returns nonzero and is recorded as failed branch,future_work,2
-opt4_warp_per_seed,1000,0,,,,,,,,,,,,,original one-warp-per-seed kernel was not promoted; variant returns nonzero and is recorded as failed branch,future_work,2

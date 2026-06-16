@@ -1,5 +1,0 @@
-N,cuda_v4_throughput,curobo_graph_throughput,cuda_v4_strict_sr,curobo_strict_sr,cuda_v4_pos_p95,curobo_pos_p95,winner_throughput,winner_quality,interpretation
-100,1357.47211,10259.477778867522,0.96,0.86,4.38451371,74.32701949661212,cuRobo-Graph,CUDA-V4,cuRobo throughput stronger; CUDA-V4 stricter quality/pos_p95 stronger
-500,1562.65002,39887.12544823831,0.954,0.836,4.33960598,109.01179323780562,cuRobo-Graph,CUDA-V4,cuRobo throughput stronger; CUDA-V4 stricter quality/pos_p95 stronger
-1000,1564.55753,63859.20573017882,0.954,0.84,4.50895888,98.53029432352942,cuRobo-Graph,CUDA-V4,cuRobo throughput stronger; CUDA-V4 stricter quality/pos_p95 stronger
-5000,1569.15118,129034.16345653101,0.954,0.8418,4.50895888,74.11459640010173,cuRobo-Graph,CUDA-V4,cuRobo throughput stronger; CUDA-V4 stricter quality/pos_p95 stronger

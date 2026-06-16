@@ -1,0 +1,8 @@
+item,status,detail
+cleanup_policy,done,old generated csv/md/images/paper/logs/build removed directly without new archive
+build,pass,cmake configure and build completed; standard_robot_cuda_v4_runner generated
+fk_check,pass,data/results/latest/fk_check.csv generated
+cuda_static_all_N,pass,N=100/500/1000/5000 OPT4C analytic fp64 completed
+cuda_N100_quality_gate,pass,strict_sr=0.96; pos_p95_all_mm=4.38451277
+cuda_nan_inf_gate,pass,all latest CUDA rows have nan_count=0 and inf_count=0
+curobo_graph,pass,rows=4; output=data/results/latest/curobo_graph_compare.csv

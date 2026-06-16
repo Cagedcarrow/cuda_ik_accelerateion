@@ -1,8 +1,0 @@
-frame_joint,parent,child,xyz_m,rpy_rad,translation_norm_mm,risk,notes
-base_link-base_link_inertia,base_link,base_link_inertia,0 0 0,0 0 3.141592653589793,0.0,low,rotation-only fixed frame
-wrist_3_link-ft_frame,wrist_3_link,ft_frame,0 0 0,3.141592653589793 0 0,0.0,low,rotation-only fixed frame
-base_link-base_fixed_joint,base_link,base,0 0 0,0 0 3.141592653589793,0.0,low,rotation-only fixed frame
-wrist_3-flange,wrist_3_link,flange,0 0 0,0 -1.5707963267948966 -1.5707963267948966,0.0,low,rotation-only fixed frame
-flange-tool0,flange,tool0,0 0 0,1.5707963267948966 0 1.5707963267948966,0.0,low,rotation-only fixed frame
-base_link_to_tool0_at_q_zero,base_link,tool0,1.1843 0.256141 0.0115999999,,1211.7381160364098,info,"full arm FK at q=0, not a fixed TCP offset"
-wrist_3_link_to_tool0_effective,wrist_3_link,tool0,0 0 0,composed from wrist_3-flange and flange-tool0,0.0,low,effective translation is zero; position diff at same q is numerical roundoff

@@ -1,9 +1,0 @@
-item,value,notes
-default_N1000_strict_sr,0.838,
-default_N1000_pos_p95_all_mm,103.78698002880935,
-default_N1000_pos_p95_success_only_mm,0.397162064069457,
-reported_flags,"{'reported_large_reeval_large': 1011, 'consistent_success': 5560, 'consistent_failure': 29}",reported-vs-reeval classification over all default N rows
-same_target_counts_N1000,"{'cuda_success_curobo_fail': 147, 'both_success': 807, 'curobo_success_cuda_fail': 31, 'both_fail': 15}",both_success cuRobo p95=0.239153 mm
-best_seed_sweep,"{'N': 100, 'num_seeds': 64, 'strict_sr': '1.0', 'pos_p95_all': '0.026308070798315507', 'throughput': '18865.589181058433'}",
-best_optimizer_sweep,"{'N': 100, 'config_name': 'quality_more_seeds', 'num_seeds': '128', 'strict_sr': '1.0', 'pos_p95_all': '0.0221932477920097', 'throughput': '10773.985664496613'}",
-root_cause_decision,A_failure_tail_dominated;C_seed_config_insufficient;D_throughput_quality_tradeoff,

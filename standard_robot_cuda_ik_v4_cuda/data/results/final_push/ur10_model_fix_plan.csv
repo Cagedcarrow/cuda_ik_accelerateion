@@ -1,7 +1,0 @@
-step,action,setting,required,notes
-1,Keep official UniversalRobots/Universal_Robots_ROS2_Description source pinned,"source_ref=4.3.1, ur_type=ur10",1,Already satisfied by ur10_official_source.json.
-2,"Use one shared flattened URDF for CUDA constants, Python evaluator, and cuRobo",/mnt/linuxdata/cuda_ik_accelerateion/standard_robot_cuda_ik/urdf/ur10_official.urdf,1,Regenerate CUDA constants from the same URDF after any model change.
-3,Fix ee frame explicitly,base_link -> tool0,1,"Do not mix wrist_3_link, flange, ft_frame, or controller base frame in evaluation."
-4,Keep joint order fixed,shoulder_pan_joint;shoulder_lift_joint;elbow_joint;wrist_1_joint;wrist_2_joint;wrist_3_joint,1,"If an external solver returns a different order, reorder to this mapping before FK/error evaluation."
-5,Factory calibration for real robot,ur_calibration generated kinematics yaml,0,"Not required for synthetic fair benchmark, required before real UR10 experiment."
-6,Rerun cuRobo boundary after model/frame fix,N=100/500/1000/5000,0,Required only if FK cross-check or frame audit fails; current audit decides this field.

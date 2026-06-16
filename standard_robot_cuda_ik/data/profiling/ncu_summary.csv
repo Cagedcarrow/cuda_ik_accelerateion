@@ -1,4 +1,0 @@
-Config,N,ComputeThroughput_pct,DRAMThroughput_pct,RegistersPerThread,Occupancy_pct,BankConflicts,L1HitRate_pct,KernelDuration_us,NCUReportFile
-B4 (FP64 full),100,66.89,1.56,94,32.51,3522,99.13,2920,b4_fp64_n100_zero_seed.ncu-rep
-B5 (Mixed FP32+FP64),100,60.73,1.16,98,33.30,1295,98.62,827,b5_mixed_n100_memory.ncu-rep
-B4 (FP64 full),5000,85.00,5.00,94,41.67,0,99.00,70060,b3_fp64_n5000_full_zero_seed.ncu-rep

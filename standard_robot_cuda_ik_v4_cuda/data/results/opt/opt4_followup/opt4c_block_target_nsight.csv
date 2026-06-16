@@ -1,2 +1,0 @@
-variant,ncu_status,returncode,achieved_occupancy,sm_utilization,dram_throughput,branch_divergence,branch_efficiency,warp_execution_efficiency,raw_log
-opt4c_block_target,pass,0,16.04,84.24,0.58,2375.97,98.24,10.57,/mnt/linuxdata/cuda_ik_accelerateion/standard_robot_cuda_ik_v4_cuda/logs/opt/opt4_followup/opt4c_block_target_ncu_raw.log

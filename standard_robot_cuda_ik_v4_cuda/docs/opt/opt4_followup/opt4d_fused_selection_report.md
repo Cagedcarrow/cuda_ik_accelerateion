@@ -1,9 +1,0 @@
-# OPT4D Fused Selection Report
-
-OPT4D D1 is implemented through OPT4C: each target block solves K16 seeds and performs best selection inside the same block. This removes the baseline candidate global write/read plus the separate `select_best_per_target_v4_kernel` launch.
-
-| variant | N | quality_unchanged | baseline_two_kernel_ms | fused_generation_selection_ms | total_gpu_stream_ms_speedup | selection_phase_speedup | notes |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| opt4d_fused_selection_from_opt4c | 100 | 1 | 64.2121352 | 6.58284372 | 9.754467511496689 |  | OPT4D D1 is represented by OPT4C fused in-block selection; candidate global write/read and select kernel are removed |
-| opt4d_fused_selection_from_opt4c | 1000 | 1 | 595.614864 | 57.3580533 | 10.384154094016298 |  | OPT4D D1 is represented by OPT4C fused in-block selection; candidate global write/read and select kernel are removed |
-| opt4d_fused_selection_from_opt4c | 5000 | 1 | 2967.95039 | 274.726237 | 10.803301579091624 |  | OPT4D D1 is represented by OPT4C fused in-block selection; candidate global write/read and select kernel are removed |

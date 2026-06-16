@@ -1,6 +1,0 @@
-[ 25%] Building CUDA object CMakeFiles/standard_robot_cuda_memory.dir/src/cuda/cuda_memory.cu.o
-[ 50%] Linking CUDA static library libstandard_robot_cuda_memory.a
-[ 50%] Built target standard_robot_cuda_memory
-[ 75%] Building CUDA object CMakeFiles/standard_robot_cuda_v4_runner.dir/src/cuda/cuda_v4_runner.cu.o
-[100%] Linking CUDA executable standard_robot_cuda_v4_runner
-[100%] Built target standard_robot_cuda_v4_runner

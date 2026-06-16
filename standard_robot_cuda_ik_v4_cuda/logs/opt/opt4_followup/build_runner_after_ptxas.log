@@ -1,7 +1,0 @@
-[ 50%] Built target standard_robot_cuda_memory
-[ 75%] Building CUDA object CMakeFiles/standard_robot_cuda_v4_runner.dir/src/cuda/cuda_v4_runner.cu.o
-[100%] Linking CUDA executable standard_robot_cuda_v4_runner
-[100%] Built target standard_robot_cuda_v4_runner
-
-[elapsed_s] 2.294
-[returncode] 0

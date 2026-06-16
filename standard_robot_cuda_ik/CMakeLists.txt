@@ -106,7 +106,69 @@ set_target_properties(standard_robot_cuda_runner PROPERTIES
   CUDA_RUNTIME_LIBRARY Static
 )
 
-if(orocos_kdl_FOUND)
+add_executable(standard_robot_cuda_v4_runner
+  ${PROJECT_SRC}/cuda/cuda_v4_runner.cu
+)
+target_include_directories(standard_robot_cuda_v4_runner PRIVATE
+  ${PROJECT_INC}
+  ${PROJECT_INC}/standard_robot_cuda_ik
+  ${PROJECT_SRC}/cuda
+)
+target_link_libraries(standard_robot_cuda_v4_runner PRIVATE
+  CUDA::cudart
+  standard_robot_cuda_memory
+)
+set_target_properties(standard_robot_cuda_v4_runner PROPERTIES
+  CUDA_RUNTIME_LIBRARY Static
+)
+
+function(add_v4_regcap_target REGCOUNT)
+  set(TARGET_NAME standard_robot_cuda_v4_runner_r${REGCOUNT})
+  add_executable(${TARGET_NAME}
+    ${PROJECT_SRC}/cuda/cuda_v4_runner.cu
+  )
+  target_include_directories(${TARGET_NAME} PRIVATE
+    ${PROJECT_INC}
+    ${PROJECT_INC}/standard_robot_cuda_ik
+    ${PROJECT_SRC}/cuda
+  )
+  target_compile_options(${TARGET_NAME} PRIVATE
+    $<$<COMPILE_LANGUAGE:CUDA>:--ptxas-options=-v --maxrregcount=${REGCOUNT}>
+  )
+  target_link_libraries(${TARGET_NAME} PRIVATE
+    CUDA::cudart
+    standard_robot_cuda_memory
+  )
+  set_target_properties(${TARGET_NAME} PROPERTIES
+    CUDA_RUNTIME_LIBRARY Static
+  )
+endfunction()
+
+add_v4_regcap_target(160)
+add_v4_regcap_target(128)
+
+add_executable(standard_robot_cuda_v4_runner_ptxas
+  ${PROJECT_SRC}/cuda/cuda_v4_runner.cu
+)
+target_include_directories(standard_robot_cuda_v4_runner_ptxas PRIVATE
+  ${PROJECT_INC}
+  ${PROJECT_INC}/standard_robot_cuda_ik
+  ${PROJECT_SRC}/cuda
+)
+target_compile_options(standard_robot_cuda_v4_runner_ptxas PRIVATE
+  $<$<COMPILE_LANGUAGE:CUDA>:--ptxas-options=-v>
+)
+target_link_libraries(standard_robot_cuda_v4_runner_ptxas PRIVATE
+  CUDA::cudart
+  standard_robot_cuda_memory
+)
+set_target_properties(standard_robot_cuda_v4_runner_ptxas PROPERTIES
+  CUDA_RUNTIME_LIBRARY Static
+)
+
+if(orocos_kdl_FOUND
+   AND EXISTS "${PROJECT_SRC}/cpu_baseline/kdl_solver.cpp"
+   AND EXISTS "${PROJECT_SRC}/cpu_baseline/numeric_dls_solver.cpp")
   add_library(standard_robot_cpu_baselines STATIC
     ${PROJECT_SRC}/cpu_baseline/kdl_solver.cpp
     ${PROJECT_SRC}/cpu_baseline/numeric_dls_solver.cpp

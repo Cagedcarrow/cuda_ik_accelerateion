@@ -944,6 +944,7 @@ cudaError_t launch_filter_topk_per_target(
       d_costs, d_iterations, d_topk_costs, d_topk_indices,
       total, topK, min_iterations);
 
+  return cudaGetLastError();
 }
 
 // ============================================================================

@@ -1,9 +1,0 @@
-test_item,expected,actual,status
-"Python FK self-consistency","pass","pass","PASS"
-"CPU DLS IK convergence rate (N=10)",">= 0.5","0.5","PASS"
-"CUDA FK vs CPU FK max error","< 1e-6","2.78e-16","PASS"
-"CUDA DLS IK convergence rate (N=10)",">= 0.5","0.5","PASS"
-"Python FK vs yourdfpy cross-validation","pass","pass","PASS"
-"FK at q=0 identity check","pass","pass","PASS"
-"CUDA kernel compilation","pass","pass","PASS"
-"CUDA DLS IK kernel no crash","pass","pass","PASS"

@@ -1,5 +1,0 @@
-source,joint_order,matches_standard_order,reorder_mapping_to_standard,status,risk
-expected_standard,shoulder_pan_joint;shoulder_lift_joint;elbow_joint;wrist_1_joint;wrist_2_joint;wrist_3_joint,1,0;1;2;3;4;5,ok,low
-cuda,shoulder_pan_joint;shoulder_lift_joint;elbow_joint;wrist_1_joint;wrist_2_joint;wrist_3_joint,1,0;1;2;3;4;5,ok,low
-urdf_path_base_link_to_tool0,shoulder_pan_joint;shoulder_lift_joint;elbow_joint;wrist_1_joint;wrist_2_joint;wrist_3_joint,1,0;1;2;3;4;5,ok,low
-curobo_kinematics,shoulder_pan_joint;shoulder_lift_joint;elbow_joint;wrist_1_joint;wrist_2_joint;wrist_3_joint,1,0;1;2;3;4;5,ok,low

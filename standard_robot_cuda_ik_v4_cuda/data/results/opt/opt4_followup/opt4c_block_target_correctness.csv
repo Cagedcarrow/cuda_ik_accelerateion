@@ -1,2 +1,0 @@
-variant,N,correctness_pass,strict_sr,pos_p95_all_mm,near_limit,strict_sr_diff_pp,pos_p95_diff_mm,near_limit_diff_pp,best_seed_diff_count,max_q_abs_diff,nan_count,inf_count
-CUDA-V4-opt4c_block_target-analytic,100,1,0.96,4.38451277,0.01,0.0,0.0,0.0,0,0.0,0,0

@@ -1,5 +1,0 @@
-area,status,main_text,appendix,future_work
-kernel_optimization,completed,conditional,yes,warp-per-seed cooperative kernel
-adaptive_k,completed,conditional_on_gates,yes,threshold rescue
-full_ablation,completed,yes,source-limited rows,rerun unavailable historical methods
-paper_claim_boundary,completed,conservative,yes,do not claim full cuRobo speed superiority

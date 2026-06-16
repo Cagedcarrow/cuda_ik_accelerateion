@@ -1,9 +1,0 @@
-N,Solver,Threshold,GPU_time_ms,Throughput_targets_per_s,ConvRate,AvgIters,Speedup_vs_cuRobo,Repeat,SeedStrategy,Date
-100,CUDA B5,Medium (10mm/5°),0.890,112414,1.000,14.47,36.1x,30,zero_seed,2026-06-12
-100,cuRobo,Medium (10mm/5°),32.08,3118,1.000,—,—,30,zero_seed,2026-06-12
-500,CUDA B5,Medium (10mm/5°),3.160,158251,0.998,15.13,10.0x,30,zero_seed,2026-06-12
-500,cuRobo,Medium (10mm/5°),31.56,15844,1.000,—,—,30,zero_seed,2026-06-12
-1000,CUDA B5,Medium (10mm/5°),6.738,148412,0.998,15.88,4.7x,30,zero_seed,2026-06-12
-1000,cuRobo,Medium (10mm/5°),31.64,31611,1.000,—,—,30,zero_seed,2026-06-12
-5000,CUDA B5,Medium (10mm/5°),29.641,168683,0.9998,15.24,1.09x,30,zero_seed,2026-06-12
-5000,cuRobo,Medium (10mm/5°),32.25,155059,1.000,—,—,30,zero_seed,2026-06-12
