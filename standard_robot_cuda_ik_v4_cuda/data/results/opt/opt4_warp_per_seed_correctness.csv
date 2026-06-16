@@ -1,0 +1,2 @@
+variant,implemented,pass_quality,notes
+warp_per_seed_prototype,0,0,Not promoted; requires a separate cooperative warp solve kernel beyond current correctness baseline

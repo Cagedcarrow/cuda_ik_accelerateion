@@ -1,0 +1,14 @@
+mode=v4_static
+variant=opt2_r128
+limit_gradient=analytic
+N=5000
+K=16
+repeat=30
+warmup=10
+gpu_stream_ms_mean=2987.44468
+throughput_targets_per_s=1673.67116
+best_csv=/mnt/linuxdata/cuda_ik_accelerateion/standard_robot_cuda_ik_v4_cuda/logs/opt/opt2_r128_N5000.best.csv
+summary_csv=/mnt/linuxdata/cuda_ik_accelerateion/standard_robot_cuda_ik_v4_cuda/logs/opt/opt2_r128_N5000.csv
+
+[elapsed_s] 119.807
+[returncode] 0

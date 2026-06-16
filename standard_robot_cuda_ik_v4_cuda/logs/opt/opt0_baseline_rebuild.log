@@ -1,0 +1,14 @@
+mode=v4_static
+variant=opt0_baseline_rebuild
+limit_gradient=finite_diff
+N=1000
+K=16
+repeat=30
+warmup=10
+gpu_stream_ms_mean=646.025281
+throughput_targets_per_s=1547.92704
+best_csv=/mnt/linuxdata/cuda_ik_accelerateion/standard_robot_cuda_ik_v4_cuda/logs/opt/opt0_baseline_rebuild.best.csv
+summary_csv=/mnt/linuxdata/cuda_ik_accelerateion/standard_robot_cuda_ik_v4_cuda/logs/opt/opt0_baseline_rebuild.csv
+
+[elapsed_s] 26.119
+[returncode] 0

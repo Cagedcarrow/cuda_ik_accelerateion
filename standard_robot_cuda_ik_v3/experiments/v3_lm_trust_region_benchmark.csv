@@ -1,0 +1,13 @@
+method,threshold,N,success_rate,pos_p50_mm,pos_p95_mm,rot_p50_deg,avg_iters,time_s
+V2-DLS-Analytical,Loose(30mm/10deg),200,0.865,15.83,104.89,0.731,40.5,1.4
+V2-DLS-Analytical,Medium(10mm/5deg),200,0.800,5.07,104.89,0.204,48.2,1.6
+V2-DLS-Analytical,Strict(5mm/1deg),200,0.785,2.50,104.89,0.114,51.0,1.7
+V3-LM-TR,Loose(30mm/10deg),200,0.330,193.78,733.70,13.799,115.2,4.0
+V3-LM-TR,Medium(10mm/5deg),200,0.295,193.78,733.70,13.799,120.0,4.2
+V3-LM-TR,Strict(5mm/1deg),200,0.285,193.78,733.70,13.799,121.7,4.3
+V3-LM-TR-Multi4,Loose(30mm/10deg),200,0.715,16.64,160.17,1.472,59.1,16.0
+V3-LM-TR-Multi4,Medium(10mm/5deg),200,0.660,5.38,160.17,0.729,65.7,16.6
+V3-LM-TR-Multi4,Strict(5mm/1deg),200,0.630,1.59,160.17,0.434,70.4,17.1
+V3-LM-TR-Multi8,Loose(30mm/10deg),200,0.810,12.05,143.47,0.883,45.3,34.3
+V3-LM-TR-Multi8,Medium(10mm/5deg),200,0.765,2.96,143.47,0.391,50.0,35.3
+V3-LM-TR-Multi8,Strict(5mm/1deg),200,0.740,0.84,143.47,0.244,54.4,35.6

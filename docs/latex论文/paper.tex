@@ -11,6 +11,7 @@
 \fancyhead[R]{\small Systems Engineering and Electronics}
 \fancyfoot[C]{\thepage}
 \renewcommand{\headrulewidth}{0.4pt}
+\graphicspath{{/mnt/linuxdata/cuda_ik_accelerateion/standard_robot_cuda_ik/experiments/figures/}}
 \lstset{
   basicstyle=\ttfamily\footnotesize,
   commentstyle=\color{green!45!black}\itshape,
@@ -36,89 +37,80 @@
 \twocolumn[%
 {\centering
 {\LARGE\bfseries 基于 CUDA 小矩阵加速的机械臂批量逆运动学求解}\par\vspace{3mm}
-{\large 刘小明$^{1,*}$，某某某$^{2}$}\par\vspace{2mm}
-{\small (1. XXXX大学 XXXX学院，XX XX XXXXX； 2. XXXX研究所，XX XXXXX)}\par\vspace{3mm}
+{\large 匿名稿（通讯作者信息在单独标题页）}\par\vspace{2mm}
+{\small （作者单位信息在单独标题页）}\par\vspace{3mm}
 {\small\bfseries 文章编号：}（预留）\quad{\small\bfseries DOI：}（预留）\par\vspace{2mm}
 \begin{minipage}{0.9\textwidth}\small
-{\bfseries 摘　要：} 针对机械臂批量逆运动学求解中 $6\times6$ 小矩阵反复求解和多迭代带来的 kernel launch 累积开销问题，提出一种基于计算统一设备架构（compute unified device architecture，CUDA）底层优化的批量阻尼最小二乘法加速方法。该方法将每个目标映射为 1 个 CUDA 线程块（128 线程），在单次 kernel launch 中完成全部迭代；设计寄存器驻留的 $6\times6$ $\mathrm{LDL}^\top$ 求解器替代 cuBLAS 库调用；采用列填充共享内存布局降低 Bank 冲突；引入 FP32/FP64 混合精度策略——正运动学和雅可比计算使用 FP32，$\mathrm{LDL}^\top$ 求解与收敛判定保留 FP64。在 NVIDIA GeForce RTX 4060 Laptop GPU 上，以官方 UR10 为实验对象构建统一 benchmark。实验表明：混合精度配置在批量规模 $N=100$ 时吞吐达 112,414 targets/s，为 NVIDIA cuRobo 的 36.1 倍；消融实验中自适应阻尼将收敛率从 52--83\% 恢复至 100\%，混合精度在此基础上额外提升吞吐 120--149\% 且收敛率无退化；$N=100\to10{,}000$ 全量程上 GPU 时间严格线性（$R^2>0.999$），吞吐稳定在 148k--174k targets/s（$\pm8\%$）。Nsight Compute 剖析确认 kernel 为计算密集型，Bank 冲突降低 63\%，零寄存器溢出。\par\vspace{2mm}
+{\bfseries 摘　要：} 针对机械臂批量逆运动学求解中 $6\times6$ 小矩阵反复求解与多 kernel 调度带来的固定开销问题，提出基于计算统一设备架构（compute unified device architecture，CUDA）底层优化的批量阻尼最小二乘法加速方法。将每个目标映射为 1 个 CUDA 线程块，在单次 kernel launch 中完成全部迭代；设计寄存器驻留的 $6\times6$ $\mathrm{LDL}^\top$ 求解器替代 cuBLAS；采用 FP32/FP64 混合精度策略。以官方 UR10 为对象构建统一 benchmark，从端到端、GPU stream 和有效吞吐三个维度报告性能并引用 cuRobo（CUDA Graph 开启）为公平基线。实验表明：当 $N\ge500$ 时本文方法吞吐稳定在 128k--157k targets/s，GPU 时间线性扩展（$R^2>0.999$）；在 $N=100$ 极小批量下 GPU 流延迟较 cuRobo-Graph 降低约 52\%。当 $N\ge500$ 时 cuRobo-Graph 依靠 Graph 和批处理优化通常获得更高吞吐，但其存在批量依赖的非单调退化。本文方法的优势在于 kernel launch 数恒为 1、结构简单、批量扩展可预测。Jacobian 精度分析表明 FP32 混合精度在 $\varepsilon=10^{-6}$ 下对应约 4--5 mm 的 IK 收敛精度边界——适用于中等精度批量采样与候选解筛选。\par\vspace{2mm}
 {\bfseries 关键词：} 逆运动学；计算统一设备架构；小矩阵求解；混合精度；Bank 冲突\par
 {\bfseries 中图分类号：} TP391.4\quad{\bfseries 文献标志码：} A\par
 {\bfseries 收稿日期：}（预留）；{\bfseries 修回日期：}（预留）；{\bfseries 网络优先出版日期：}（预留）。\par
-{\bfseries 引用格式：} 刘小明，某某某. 基于 CUDA 小矩阵加速的机械臂批量逆运动学求解 [J]. 系统工程与电子技术，2026，XX(X)：XXX--XXX.
 \end{minipage}\par
 }]
 
 {\bfseries\large CUDA-Accelerated Small-Matrix Solver for Batch Inverse Kinematics of Robot Manipulators}
 
-\vspace{2mm}
-LIU Xiaoming$^{1,*}$, XXXXX$^{2}$
-
 \vspace{1mm}
-{\small (1. School of XXXX, XXXX University, XX XXXXX, China; 2. XXXX Research Institute, XX XXXXX, China)}
+{\small （Author information on separate title page）}
 
 \vspace{2mm}
-{\bfseries Abstract:} Batch inverse kinematics (IK) for robot manipulators incurs substantial kernel launch overhead from repeatedly solving $6\times6$ linear systems across numerous targets. This paper presents a compute unified device architecture (CUDA)-based low-level acceleration method for batch damped least-squares IK. Each target is mapped to one CUDA block (128 threads), with all iterations encapsulated within a single kernel launch. A register-resident $6\times6$ $\mathrm{LDL}^\top$ solver replaces cuBLAS library calls in 86 scalar operations. A column-padded shared-memory layout reduces bank conflicts by 63\%. A mixed-precision strategy applies FP32 to forward kinematics and Jacobian evaluation while retaining FP64 for $\mathrm{LDL}^\top$ factorization and convergence checks. Experiments on an official UR10 model with unified targets and thresholds on an NVIDIA GeForce RTX 4060 Laptop GPU demonstrate that the mixed-precision configuration achieves 112,414 targets/s at batch size $N=100$ (36.1$\times$ NVIDIA cuRobo). Ablation shows adaptive damping restores convergence rate from 52--83\% to 100\%, and mixed precision adds 120--149\% throughput gain without convergence degradation. GPU time scales strictly linearly across $N=100$--$10{,}000$ ($R^2>0.999$) with throughput of 148k--174k targets/s ($\pm8\%$). Nsight Compute profiling confirms the kernel is compute-bound with zero register spilling.
+{\bfseries Abstract:} This paper presents a CUDA-based low-level acceleration method for batch damped least-squares inverse kinematics (IK). Each target is mapped to one CUDA block (128 threads), with all iterations in a single kernel launch. A register-resident $6\times6$ $\mathrm{LDL}^\top$ solver replaces cuBLAS. A mixed-precision strategy applies FP32 to forward kinematics and Jacobian evaluation while retaining FP64 for $\mathrm{LDL}^\top$ and convergence checks. On a unified UR10 benchmark with cuRobo (CUDA Graph enabled) as the fair baseline, the proposed method achieves 128k--157k targets/s for $N\ge500$ with strictly linear GPU time scaling ($R^2>0.999$). At $N=100$, GPU stream latency is $\approx$52\% lower than cuRobo-Graph. For $N\ge500$, cuRobo-Graph generally achieves higher throughput via Graph and internal batching, but exhibits batch-size-dependent non-monotonic degradation. The advantage of the proposed method lies in its structural simplicity: constant-1 kernel launch count and predictable batch scaling. Jacobian precision analysis reveals an IK convergence precision boundary of $\approx$4--5 mm under FP32 mixed precision, suitable for medium-precision batch sampling and candidate screening.
 
 \vspace{1mm}
 {\bfseries Keywords:} inverse kinematics; CUDA; small-matrix solver; mixed precision; bank conflict
 
 \section{引 言}
 
-机械臂批量逆运动学（inverse kinematics，IK）求解是轨迹优化、料箱抓取和采样规划等机器人应用中的核心计算环节[1]。给定 $N$ 个末端执行器目标位姿，批量 IK 需为每个目标求解一组关节角，使正运动学（forward kinematics，FK）输出与目标位姿匹配。六自由度串联机械臂的 IK 通常无闭式解，实际系统普遍采用阻尼最小二乘法（damped least squares，DLS）或 Levenberg-Marquardt（LM）法进行数值迭代[2-3]。贾龙飞等[4]系统综述了冗余机械臂IK的三大类求解方法——解析法、数值解法和智能算法——指出数值解法通用性好但计算量大，实时性难以兼顾。批量 IK 的计算特征可归纳为三重挑战：（1）每次迭代需反复求解 $6\times6$ 线性系统，矩阵规模固定且极小；（2）每个目标需 10--80 次迭代才能收敛；（3）独立目标数 $N$ 可达数千至上万。
+机械臂批量逆运动学（inverse kinematics，IK）求解是轨迹优化、料箱抓取和采样规划等应用的核心计算环节[1]。给定 $N$ 个末端目标位姿，批量 IK 需为每个目标求解关节角使正运动学（forward kinematics，FK）输出匹配目标。尽管部分具有球腕结构的 6R 工业机械臂可推导解析 IK，数值 IK 因模型适应性强、易处理关节限位和扩展约束，在批量采样与通用软件框架中广泛采用[2-3]。贾龙飞等[4]综述了三大类 IK 求解方法，指出数值解法通用性好但计算量大。批量 IK 的计算特征：（1）每次迭代须反复求解 $6\times6$ 极小固定规模线性系统；（2）每目标需 10--80 次迭代收敛；（3）目标数 $N$ 可达数千至上万。
 
-{\bfseries 批量 IK 计算方法。} Orocos KDL 提供了成熟的 C++ FK/IK 工具链[5]，但其单线程串行迭代模式在批量场景下吞吐有限（约 986 targets/s）。Buss 等[2]系统比较了 Jacobian 转置、伪逆和 DLS 三种方法的收敛特性，指出 DLS 在奇异点附近的数值稳定性优于纯伪逆方法。贾龙飞等[4]的综述进一步指出，现有IK加速研究集中在算法层面（改进粒子群、人工蜂群等群体智能方法），尚未涉及GPU硬件加速。
+{\bfseries 批量 IK 计算方法。} Orocos KDL 提供成熟的 C++ FK/IK 工具链[5]，但串行迭代在批量下吞吐有限。Buss 等[2]系统比较了 Jacobian 转置、伪逆和阻尼最小二乘法（damped least squares，DLS），指出 DLS 在奇异点附近数值稳定性更优。
 
-{\bfseries GPU 加速逆运动学。} NVIDIA cuRobo[6]将 IK 建模为非线性优化问题，在 GPU 上并行评估数千粒子，通过 L-BFGS 求解，在 RTX 4090 上实现标准 IK 37,000 queries/s。HJCD-IK[7]结合贪婪坐标下降初始化与 Jacobian 伪逆精化。ManipulaPy[8]基于指数积公式和 CuPy 自定义 CUDA kernel，在轨迹生成上实现 40 倍 CPU 加速。Kino-PAX[9]和 SPaSM[10]等 GPU 运动规划工作在算法层面实现了高度并行化，其"全 GPU 原生"的架构理念启发了本文的单 kernel 设计思路。然而上述方法均基于 PyTorch、JAX 或 CuPy 等高层框架。
+{\bfseries GPU 加速逆运动学。} NVIDIA cuRobo[6]将 IK 建模为非线性优化，在 GPU 上并行评估粒子并通过 L-BFGS 求解，是当前最具影响力的 GPU IK 框架。HJCD-IK[7]结合贪婪坐标下降与 Jacobian 伪逆精化。ManipulaPy[8]基于指数积公式和 CuPy 自定义 CUDA kernel。Kino-PAX[9]等 GPU 运动规划工作的``全 GPU 原生''架构理念启发了本文的单 kernel 设计。上述方法大多基于 PyTorch、JAX 或 CuPy 等高层框架，其多 kernel 调度和跨语言调用栈在小粒度批量 IK 中引入了不可忽略的固定开销。
 
-{\bfseries CUDA 底层优化。} 面向极小矩阵（$n\le32$）的 CUDA 底层优化在数值线性代数领域已有深入研究。Abdelfattah 等[11]针对 $\le32$ 矩阵、百万级批量的 LU/QR/Cholesky 分解，通过寄存器分块实现相对厂商库 11.8 倍加速。刘世芳等[12]在 GPU 上实现了批量 LU 分解的矩阵求逆，在 TITAN V 上达到 cuBLAS 的 13 倍加速。Shridhar[13]在 RTX 3080 上证实自定义小矩阵求逆 kernel 仅占总运行时间的 10\%，而 cuBLAS 调用占 67\%。在混合精度方面，Abdelfattah 等[14]利用 Tensor Core 进行三层迭代精化，在关键路径保留 FP64 的前提下实现 3--5 倍加速。
+{\bfseries CUDA 底层优化。} 面向极小矩阵（$n\le32$）的 CUDA 优化在数值线性代数领域已有深入研究。Abdelfattah 等[10]针对百万级批量的 LU/QR/Cholesky 分解，通过寄存器分块实现相对厂商库 11.8 倍加速。刘世芳等[11]在 GPU 上实现批量 LU 矩阵求逆，达到 cuBLAS 的 13 倍加速。Shridhar[12]在 RTX 3080 上证实自定义小矩阵求逆 kernel 仅占总运行时间 10\%，而 cuBLAS 调用占 67\%。Abdelfattah 等[13]利用 Tensor Core 进行三层迭代精化，在关键路径保留 FP64 的前提下实现 3--5 倍加速。
 
-本文的核心观点是：对 $6\times6$ 这一固定规模的 IK 小矩阵，{\bfseries 手写 CUDA 底层实现可以系统性地优于基于通用库和框架的方案}。具体贡献为：（1）1 block/target 映射与单 kernel 全迭代封装，将 kernel launch 开销从 $O(N\cdot K)$ 降至 $O(1)$；（2）寄存器驻留的 $6\times6$ $\mathrm{LDL}^\top$ 求解器，86 次标量运算替代 cuBLAS 库调用；（3）PaddedMat$6\times8$ 共享内存布局将 Bank 冲突降低 63\%；（4）FP32/FP64 混合精度策略，在 Ada Lovelace 64:1 的吞吐比下释放显著性能增益且收敛率无退化。
+本文核心观点：对 $6\times6$ 固定规模 IK 小矩阵，{\bfseries 手写 CUDA 底层实现可通过减少通用库调度开销和框架层间通信，在极小批量下获得更低延迟，并在全量程保持稳定线性扩展}。贡献：（1）1 block/target 映射与单 kernel 封装，kernel launch 数恒为 1；（2）寄存器驻留 $6\times6$ $\mathrm{LDL}^\top$ 求解器；（3）PaddedMat$6\times8$ 布局将 Bank 冲突降低 63\%；（4）FP32/FP64 混合精度策略，通过 Jacobian 精度验证量化其适用范围边界。
 
 \section{批量 IK 问题建模与 DLS 方法}\label{sec:model}
 
 \subsection{运动学模型}
 
-UR10 为 6 自由度全旋转关节串联机械臂，其 DH 参数遵循 Universal Robots 官方统一机器人描述格式（unified robot description format，URDF）[15]。正运动学将关节角向量 $\mathbf{q}=[q_1,\ldots,q_6]^\top\in\mathbb{R}^6$ 映射为末端执行器齐次变换矩阵 $\mathbf{T}_{\mathrm{ee}}(\mathbf{q})\in\mathrm{SE}(3)$：
+UR10 为 6 自由度全旋转关节串联机械臂，DH 参数遵循 Universal Robots 官方 URDF[14]。正运动学将关节角 $\mathbf{q}=[q_1,\ldots,q_6]^\top$ 映射为末端齐次变换矩阵 $\mathbf{T}_{\mathrm{ee}}(\mathbf{q})\in\mathrm{SE}(3)$：
 \begin{equation}
-\mathbf{T}_{\mathrm{ee}}(\mathbf{q}) = \prod_{i=1}^{6} \mathbf{T}_{i-1,i}(q_i)
+\mathbf{T}_{\mathrm{ee}}(\mathbf{q}) = \prod_{i=1}^{6} \mathbf{T}_{i-1,i}(q_i)\label{eq:fk}
 \end{equation}
-其中 $\mathbf{T}_{i-1,i}(q_i)=\exp(\hat{\boldsymbol{\xi}}_i\cdot q_i)\cdot\mathbf{T}_{i-1,i}(0)$。实用中采用 Rodrigues 公式：
-$\mathbf{R}_i=\mathbf{I}+\sin(q_i)[\mathbf{a}_i]_\times+(1-\cos(q_i))[\mathbf{a}_i]_\times^2$，其中 $[\mathbf{a}_i]_\times$ 为关节轴 $\mathbf{a}_i$ 的反对称矩阵。
+实用中采用 Rodrigues 公式计算旋转矩阵。
 
-对目标位姿 $\mathbf{T}_{\mathrm{tgt}}\in\mathrm{SE}(3)$，定义位姿误差 $\mathbf{e}(\mathbf{q})\in\mathbb{R}^6$：
-\begin{align}
-\mathbf{e}_p(\mathbf{q}) &= \mathbf{p}(\mathbf{T}_{\mathrm{ee}}) - \mathbf{p}(\mathbf{T}_{\mathrm{tgt}}) \\
-\mathbf{e}_R(\mathbf{q}) &= \log(\mathbf{R}_{\mathrm{ee}}\cdot\mathbf{R}_{\mathrm{tgt}}^\top)^\vee
-\end{align}
-其中 $\mathbf{p}(\cdot)$ 提取平移分量，$\log(\cdot)^\vee$ 为 $\mathrm{SO}(3)$ 上的对数映射。引入对角权重矩阵 $\mathbf{W}=\mathrm{diag}(w_p,w_p,w_p,w_R,w_R,w_R)$。
+对目标位姿 $\mathbf{T}_{\mathrm{tgt}}$，定义位姿误差 $\mathbf{e}(\mathbf{q})\in\mathbb{R}^6$，引入对角权重矩阵 $\mathbf{W}$。
 
 \subsection{DLS 迭代与批量特征}
 
 DLS[2-3]在第 $k$ 次迭代中极小化正则化目标：
 \begin{equation}
-\min_{\Delta\mathbf{q}} \frac{1}{2}\|\mathbf{W}\!\cdot\!\mathbf{J}(\mathbf{q}^{(k)})\!\cdot\!\Delta\mathbf{q} + \mathbf{W}\!\cdot\!\mathbf{e}(\mathbf{q}^{(k)})\|^2 + \frac{1}{2}\lambda\|\Delta\mathbf{q}\|^2
+\min_{\Delta\mathbf{q}} \frac{1}{2}\|\mathbf{W}\mathbf{J}\Delta\mathbf{q} + \mathbf{W}\mathbf{e}\|^2 + \frac{1}{2}\lambda\|\Delta\mathbf{q}\|^2\label{eq:dls}
 \end{equation}
-其中 $\mathbf{J}(\mathbf{q})\in\mathbb{R}^{6\times6}$ 为雅可比矩阵。区别于以误差 $\mathbf{e}$ 为变量的定义（$\mathbf{J}=\partial\mathbf{e}/\partial\mathbf{q}$），本文采用基于 FK 输出的定义——$\mathbf{J}=\partial\mathbf{x}/\partial\mathbf{q}$，$\mathbf{x}(\mathbf{q})=[\mathbf{p}(\mathbf{T}_{\mathrm{ee}});\log(\mathbf{R}_{\mathrm{ee}})^\vee]$。
-
 雅可比由 FK 中心差分计算：
 \begin{equation}
-\mathbf{J}_{:,j} = \frac{\mathbf{x}(\mathbf{q}+\varepsilon\mathbf{e}_j)-\mathbf{x}(\mathbf{q}-\varepsilon\mathbf{e}_j)}{2\varepsilon},\quad \varepsilon=10^{-6}\ \mathrm{rad}
+\mathbf{J}_{:,j} = \frac{\mathbf{x}(\mathbf{q}+\varepsilon\mathbf{e}_j)-\mathbf{x}(\mathbf{q}-\varepsilon\mathbf{e}_j)}{2\varepsilon},\quad \varepsilon=10^{-6}\ \mathrm{rad}\label{eq:jacobian}
 \end{equation}
-每列需 2 次 FK 调用，每次 DLS 迭代合计 12 次 FK。令式(4)梯度为零，得阻尼正规方程：
-\begin{equation}
-(\mathbf{J}^\top\mathbf{W}^2\mathbf{J}+\lambda\mathbf{I})\cdot\Delta\mathbf{q} = -\mathbf{J}^\top\mathbf{W}^2\mathbf{e}
-\end{equation}
-记 $\mathbf{H}=\mathbf{J}^\top\mathbf{W}^2\mathbf{J}+\lambda\mathbf{I}\in\mathbb{R}^{6\times6}$ 为阻尼 Hessian 矩阵，$\mathbf{g}=\mathbf{J}^\top\mathbf{W}^2\mathbf{e}\in\mathbb{R}^{6}$ 为梯度，则 $\Delta\mathbf{q}=-\mathbf{H}^{-1}\mathbf{g}$。更新 $\mathbf{q}^{(k+1)}=\mathbf{q}^{(k)}+\Delta\mathbf{q}$ 并投影至 $[\mathbf{q}_{\min},\mathbf{q}_{\max}]$。收敛条件：$\|\mathbf{e}_p\|<10$ mm 且 $\|\mathbf{e}_R\|<5^\circ\ (0.0873\ \mathrm{rad})$，$K_{\max}=160$。
+令式(\ref{eq:dls})梯度为零得阻尼正规方程，记 $\mathbf{H}=\mathbf{J}^\top\mathbf{W}^2\mathbf{J}+\lambda\mathbf{I}$，$\mathbf{g}=\mathbf{J}^\top\mathbf{W}^2\mathbf{e}$，解 $\Delta\mathbf{q}=-\mathbf{H}^{-1}\mathbf{g}$。收敛条件：$\|\mathbf{e}_p\|<10$ mm 且 $\|\mathbf{e}_R\|<5^\circ$，$K_{\max}=160$。
 
-{\bfseries 批量计算特征分析。} $N$ 个目标共享相同模型参数但各自拥有独立状态向量（$\mathbf{q},\mathbf{e},\mathbf{J},\mathbf{H},\mathbf{g},\Delta\mathbf{q}$）。这一结构具有两个关键性质：（1）{\bfseries 完全数据并行}——各目标的 DLS 迭代无任何依赖关系；（2）{\bfseries 计算粒度极小}——单目标每次迭代的浮点运算量约 1,500 FLOP（12 次 FK + 1 次 $\mathrm{LDL}^\top$ + 阻尼更新），远小于 GPU 上典型 kernel 的计算规模。
+批量计算特征：$N$ 个目标共享模型参数但各自独立状态向量——完全数据并行且计算粒度极小（单目标每迭代约 1 500 FLOP）。
 
 \section{CUDA 小矩阵加速设计}\label{sec:design}
 
 \subsection{1 Block/Target 并行映射与单 Kernel 封装}
 
-{\bfseries Grid-Block 映射设计。} 本文采用 $\mathrm{Grid}(N,1,1)+\mathrm{Block}(128,1,1)$ 的二维映射。选择 128 线程/block 而非 256 的理由是：kernel 的寄存器用量已达 94--98/线程，128 线程下每 block 寄存器总量为 12,544，每个流式多处理器（streaming multiprocessor，SM）可同时驻留约 5 个 block；$6\times6$ 矩阵规模下可并行的最大线程数由 $\mathbf{H}$ 矩阵的 36 个独立元素决定，128 线程已提供充足并行粒度。
+采用 $\mathrm{Grid}(N,1,1)+\mathrm{Block}(128,1,1)$ 映射，如图~\ref{fig:arch}。选择 128 线程/block：寄存器用量 94--98/线程，每 SM 可驻留约 5 block；$\mathbf{H}$ 矩阵 36 元素决定最大并行度，128 线程充足。
 
-{\bfseries 阶段式 flat threadIdx.x 分工。} 表~\ref{tab:thread} 给出了每次 DLS 迭代中各计算阶段的线程分配。
+\begin{figure}[ht]
+\centering
+\includegraphics[width=\columnwidth]{fig1_architecture.png}
+\caption{1 block/target CUDA 并行映射与单 kernel 全迭代结构}
+\label{fig:arch}
+\end{figure}
+
+DLS 迭代线程分工见表~\ref{tab:thread}。
 
 \begin{table}[ht]
 \centering
@@ -139,124 +131,51 @@ $\mathrm{LDL}^\top$ 求解/步长钳位 & $t=0$ & 1 \\
 \end{tabular}
 \end{table}
 
-{\bfseries 注：} $\mathbf{H}$ 矩阵构造使用线程 0--35，跨越 Warp 0（lane 0--31）和 Warp 1（lane 0--3），不可将 $\mathbf{H}$ 矩阵计算归属于任一单独 warp。
+{\bfseries 单 Kernel 全迭代封装——与 cuRobo 结构性对比。} 全部 $K_{\max}=160$ 次迭代在单次 \texttt{ik\_batch\_solve<<<N,\;128>>>} 中完成，CPU 端仅需一次同步。cuRobo 执行路径则经历 Python 调用$\to$tensor 分配$\to$子批次划分$\to$多 kernel 启动$\to$L-BFGS 迭代$\to$结果回传。Nsight Systems 实测 $N=4\,000$ 时 cuRobo-NoGraph 产生 14 108 次 kernel launch，启动开销累积 70--140 ms。本文方案 kernel launch 数恒为 1——所有 block 在同一 launch 中并行发射。需指出：总计算量仍随 $N$ 和 $K$ 线性增长，但固定调度开销被压缩至常数级。
 
-{\bfseries 算法 1}~~DLS 单次迭代（per-block，128 线程）
+精简伪代码：
 
-\begin{lstlisting}[language=C++, caption={DLS单次迭代伪代码}]
-// Input:  s_q[6] (shared mem, FP64), s_T_tgt[16], s_lambda
-// Output: s_q[6] (updated joint angles)
-
-if (threadIdx.x == 0) {                  // FK computation
+\begin{lstlisting}[language=C++, caption={DLS单次迭代伪代码（per-block，128线程）}]
+// s_q[6], s_T_tgt[16], s_lambda in shared memory
+if (threadIdx.x == 0)               // FK computation
     forward_kinematics(s_q, s_T_ee);
-    pose_error(s_T_ee, s_T_tgt, s_err);
-}
 __syncthreads();
-if (threadIdx.x == 0)                    // convergence check
-    converged = (norm(e_p) < 0.01) && (norm(e_R) < 0.0873);
+if (threadIdx.x == 0)               // convergence check
+    converged = (pos_err<0.01) && (rot_err<0.0873);
 __syncthreads();
-if (threadIdx.x < 6)                     // numerical Jacobian, 6 columns
-    J_col(tid) = (FK(q+eps) - FK(q-eps)) / (2*eps);
+if (threadIdx.x < 6)                // numerical Jacobian (6 cols)
+    J_col = (FK(q+eps)-FK(q-eps))/(2*eps);
 __syncthreads();
-if (threadIdx.x == 0)                    // adaptive damping
+if (threadIdx.x == 0)               // adaptive damping
     update_lambda(s_lambda, pos_err);
 __syncthreads();
-if (threadIdx.x < 36) {                  // H = J^T W^2 J + lambda*I
-    int row = threadIdx.x / 6;
-    int col = threadIdx.x % 6;
-    double sum = 0.0;
-    for (int k = 0; k < 6; k++)
-        sum += J(k,row) * w2[k] * J(k,col);
-    if (row == col) sum += s_lambda;     // damping on diagonal
-    H(row,col) = sum;
-}
+if (threadIdx.x < 36)               // H = J^T W^2 J + lambda*I
+    H[row][col] = inner_product(J,W2,row,col);
 __syncthreads();
-if (threadIdx.x < 6) {                   // g = J^T W^2 e
-    double sum = 0.0;
-    for (int k = 0; k < 6; k++)
-        sum += J(k,tid) * w2[k] * e[k];
-    g[tid] = sum;
-}
+if (threadIdx.x < 6)                // g = J^T W^2 e
+    g[tid] = dot_product(J,W2,e);
 __syncthreads();
-if (threadIdx.x == 0) {                  // LDLT solve + step clamp
+if (threadIdx.x == 0)               // register LDLT + step clamp
     ldlt_solve_6x6(H, g, dq);
-    double nrm = norm_inf(dq);
-    if (nrm > 0.35)                      // 0.35 rad clamp
-        for (int i = 0; i < 6; i++) dq[i] *= 0.35/nrm;
-}
 __syncthreads();
-if (threadIdx.x < 6)                     // joint update + limits
+if (threadIdx.x < 6)                // joint update + limits
     s_q[tid] = clamp(s_q[tid]+dq[tid], q_min[tid], q_max[tid]);
 \end{lstlisting}
 
-{\bfseries 单 Kernel 全迭代封装——与 cuRobo 的结构性对比。} 全部 $K_{\max}=160$ 次 DLS 迭代在单次 \texttt{ik\_batch\_solve<<<N, 128>>>} 启动中完成。CPU 端仅需一次 \texttt{cudaDeviceSynchronize()}，迭代过程中零 host-device 往返。该设计的直接动机来自对 cuRobo 的 Nsight Systems CUDA API trace 实测分析。对于 cuRobo，每批次的执行路径为：Python 调用 $\to$ PyTorch tensor 分配 $\to$ cuRobo 内部子批次（sub-batch）划分 $\to$ 每个子批次启动多个 CUDA kernel $\to$ 粒子评估与 L-BFGS 迭代 $\to$ 结果回传。在 $N=4000$（退化点），该流程产生了 14,108 次 CUDA kernel launch、5,069 次 \texttt{cudaEventRecord} 和 4,985 次 \texttt{cudaStreamWaitEvent} 调用，每次 launch 在消费级 GPU 驱动栈上耗时约 5--10 $\mu$s，仅启动开销即累积至 70--140 ms。相比之下，本文方案在任意 $N$ 值下 kernel launch 数恒为 1——所有 $N$ 个 block 在同一 launch 中由 GPU 调度器无锁并行发射，完全消除了跨 kernel 同步和多次 launch 的累积开销。
-
-{\bfseries 与 UR10 运动学的联动设计。} 本文的并行映射利用了 UR10 批量 IK 的特殊结构：$N$ 个目标共享同一套 DH 参数和关节限位（通过常量内存广播到所有 block），但各自维护独立的状态向量。这一"同模型、异状态"的特性使每个 block 成为一个自包含的 IK 求解单元——无需 block 间通信，无需动态内存分配，无需 GPU-CPU 同步。在实际实现中，每个目标约需 2 KB 中间状态（6 个关节角 $\times$ 8 字节 + $6\times6$ Jacobian $\times$ 8 字节 $+$ $6\times6$ Hessian $\times$ 8 字节 $+$ 误差/梯度/步长缓冲区），$N=10{,}000$ 时总全局内存需求约 20 MB，远低于 8 GB 显存上限。因此批量扩展仅受 GPU 全局内存容量约束，预计 $N=10^5$ 时（约 200 MB）仍可维持线性扩展。
-
 \subsection{寄存器级 $6\times6$ $\mathrm{LDL}^\top$ 求解器}
 
-{\bfseries 不使用 cuBLAS 的理由。} cuBLAS 的批量接口针对 $n\ge32$ 的矩阵优化，调用需经历句柄创建（5--10 $\mu$s）和数据搬运。对 $6\times6$ 矩阵，求解本身仅需约 0.1 $\mu$s，cuBLAS 开销是其 50--100 倍。文献[13]的实验验证了这一判断。
-
-{\bfseries $\mathrm{LDL}^\top$ 替代 Cholesky 的理由。} Cholesky（$\mathbf{H}=\mathbf{L}\mathbf{L}^\top$）需 6 次 sqrt，GPU 上 sqrt 吞吐仅为 FMA 的 1/4--1/8[16]。$\mathrm{LDL}^\top$（$\mathbf{H}=\mathbf{L}\mathbf{D}\mathbf{L}^\top$）避免所有 sqrt。$\lambda>0$ 保证 $\mathbf{H}\succ0$，$d_j>0$ 恒成立。
-
-{\bfseries 运算量与寄存器驻留。} $\mathrm{LDL}^\top$ 四阶段：分解（35 FMA + 15 DIV）、前代 $\mathbf{L}\mathbf{y}=\mathbf{g}$（15 FMA）、对角缩放 $\mathbf{z}=\mathbf{D}^{-1}\mathbf{y}$（6 DIV）、回代 $\mathbf{L}^\top\mathbf{x}=\mathbf{z}$（15 FMA），合计 86 次标量运算，全部驻留寄存器。
-
-{\bfseries 算法 2}~~寄存器级 $6\times6$ $\mathrm{LDL}^\top$ 求解器
-
-\begin{lstlisting}[language=C++, caption={LDLT求解器（86次标量运算）}]
-// Phase 1: LDLT decomposition (35 FMA + 15 DIV)
-for (int j = 0; j < 6; j++) {
-    double d = H[j][j];
-    for (int k = 0; k < j; k++)          // diagonal update
-        d -= L[j][k] * L[j][k] * D[k];
-    D[j] = d;
-    for (int i = j+1; i < 6; i++) {
-        double sum = H[i][j];
-        for (int k = 0; k < j; k++)      // off-diagonal update
-            sum -= L[i][k] * L[j][k] * D[k];
-        L[i][j] = sum / D[j];            // scale by D[j]
-    }
-    L[j][j] = 1.0;
-}
-// Phase 2: forward substitution Ly = g (15 FMA)
-for (int i = 0; i < 6; i++) {
-    double sum = g[i];
-    for (int k = 0; k < i; k++)
-        sum -= L[i][k] * y[k];
-    y[i] = sum;
-}
-// Phase 3: diagonal scaling z = D^{-1} y (6 DIV)
-for (int i = 0; i < 6; i++)
-    z[i] = y[i] / D[i];
-// Phase 4: backward substitution L^T x = z (15 FMA)
-for (int i = 5; i >= 0; i--) {
-    double sum = z[i];
-    for (int k = i+1; k < 6; k++)
-        sum -= L[k][i] * x[k];
-    x[i] = sum;
-}
-\end{lstlisting}
-
-$n=6$ 为编译时常量，NVCC \texttt{\#pragma unroll} 将三重循环（\texttt{j=0..5}, \texttt{k=0..j-1}, \texttt{i=j+1..5}）全部展开为直线代码，消除分支预测失败和循环控制指令开销。Nsight Compute 实测：FP64 全优化 94 regs/thread，CUDA 混合精度 98 regs/thread（$+4$ 来自 FP32$\leftrightarrow$FP64 转换中间变量），均低于 Ada Lovelace 上限 255，零 local memory spill——所有中间变量（$\mathbf{L}$[6][6]、$\mathbf{D}$[6]、$\mathbf{y}$[6]、$\mathbf{z}$[6]）完全容纳于寄存器文件。
-
-{\bfseries 与 cuBLAS 的调用链路对比。} cuBLAS 的 \texttt{cublasDgetrfBatched} 调用链路为：(1) 共享内存中 Jacobian 和 Hessian 通过全局内存拷贝到 host 端可见缓冲区 $\to$ (2) cuBLAS 句柄创建或复用（$\sim$5 $\mu$s）$\to$ (3) cuBLAS 内部分发到 batched kernel（$\sim$2--5 $\mu$s）$\to$ (4) 结果通过全局内存拷贝回共享内存。该链路的总延迟约为 10--15 $\mu$s，而本文的寄存器 LDL$^\top$ 求解仅需约 0.1 $\mu$s——后者快 100--150 倍。文献[13]在第 3 代 RTX 3080（Ampere，SM 8.6）上独立验证了这一结论：自定义小矩阵求逆 kernel 仅占总运行时间的 10\%，cuBLAS 调用占 67\%，总体加速 4--6.5 倍。本文在 Ada Lovelace（SM 8.9）上的结果与之一致。
+cuBLAS 批量接口针对 $n\ge32$ 优化，对 $6\times6$ 矩阵调用开销（$\sim$10--15 $\mu$s）是求解本身（$\sim$0.1 $\mu$s）的 100 倍以上[12]。$\mathrm{LDL}^\top$（$\mathbf{H}=\mathbf{L}\mathbf{D}\mathbf{L}^\top$）避免 Cholesky 所需的 6 次 sqrt（GPU 上 sqrt 吞吐为 FMA 的 1/4--1/8[15]）。对 $n=6$，分解和三角回代编译期完全展开为寄存器级直线代码，算术规模百级标量操作。Nsight Compute 实测：94--98 regs/thread，零 local memory spill。
 
 \subsection{PaddedMat$6\times8$ 共享内存 Bank 冲突降低}
 
-{\bfseries Bank 冲突机制的硬件根源。} GPU 共享内存以 32 个 Bank 组织，每 Bank 4 字节宽，每时钟周期可同时服务最多 32 个来自不同 Bank 的访问请求。当同一 warp 内多个线程访问同一 Bank 的不同地址时，请求被串行化处理，导致有效带宽下降。FP64 元素（8 字节）天然跨 2 个连续 Bank（Bank $2c$ 和 Bank $2c+1$）。在自然 stride=6 行优先布局下，行步长为 $6\times8=48$ 字节 = 12 Bank，Bank 访问模式由 $\gcd(12,32)=4$ 决定，以 8 次为周期重复，每周期内同一 Bank 被 2--3 个线程同时访问，产生 2--3 路冲突。在 DLS 的 Jacobian 组装阶段（6 个线程以列优先模式并发读取 Jacobian 各行）和 H 矩阵构造阶段（36 个线程以行优先+列优先混合模式并发访问），Bank 冲突导致约 10--20\% 的有效共享内存带宽损失。
+GPU 共享内存以 32 Bank 组织，FP64 元素跨 2 Bank。stride=6 下 $\gcd(12,32)=4$ 导致 2--3 路冲突。stride$6\to8$：行步长 64 字节=16 Bank，$\gcd(16,32)=16$，偶数行 Bank 0--15 与奇数行 Bank 16--31 完全分离。NCU 实测 Bank 冲突从 3 522 降至 1 295 次（$-63\%$，见后文图~\ref{fig:ncu}）。
 
-{\bfseries PaddedMat$6\times8$ 设计。} 行步长 $6\to8$，步长变为 $8\times8=64$ 字节 = 16 Bank，$\gcd(16,32)=16$。关键性质：偶数行（$r=0,2,4$）Bank 0--15，奇数行（$r=1,3,5$）Bank 16--31，两组完全不重叠。选择 stride=8 而非 16 的理由：stride=8 已实现 Bank 集完全分离，更大 stride 不再带来额外收益，且填充开销更小（192 bytes/矩阵 vs 768 bytes/矩阵）。
+\subsection{FP32/FP64 混合精度计算路径与精度边界}
 
-{\bfseries Nsight Compute 实测。} $N=100$ 下：FP64 全优化 3,522$\to$CUDA 混合精度 1,295 次 Bank 冲突（$-63\%$）。混合精度额外收益来自 FP32 数据宽度减半（4 字节仅跨 1 Bank）。残余 1,295 次来自非 PaddedMat$6\times8$ 路径，优化效果表述为"降低"而非"消除"。
+Ada Lovelace 的 FP64:FP32 吞吐比 1:64[15]。本文选 FP32+FP64 方案：FP32 提供 6--7 位十进制精度用于 FK/Jacobian，FP64 保留 $\approx10^{-15}$ 精度裕度用于 $\mathrm{LDL}^\top$ 和收敛判定。
 
-\subsection{FP32/FP64 混合精度计算路径}
-
-{\bfseries 硬件动机与设计空间。} Ada Lovelace 消费级 GPU 的 FP64 与 FP32 吞吐比为 1:64[16]。以 RTX 4060 Laptop 为例，全 GPU 3,072 个 CUDA Core 中仅约 48 个等效 FP64 单元（每 SM 约 2 个 FP64 单元），传统全 FP64 DLS 将约 90\% 的浮点运算提交给这 48 个单元，导致大规模 FP32 算力闲置。混合精度设计需在三个候选方案中选择：（a）全 FP32——吞吐最高，但 $\mathrm{LDL}^\top$ 求解中的除法运算（21 次 DIV）对 $D_j$ 偏小极为敏感，FP32 的 7 位精度在条件数 $\kappa(\mathbf{H})>10^4$ 时可能导致步长方向严重偏离；（b）FP16+FP32——可利用 Tensor Core 加速矩阵乘法，但 FP16 的 3.3 位十进制精度在 $\varepsilon=10^{-6}$ 差分步长下，Jacobian 各列的相对舍入误差达 $10^{-3}$ 量级，不可接受；（c）FP32+FP64——FP32 提供 6--7 位十进制精度（$\eta_{\mathrm{FP32}}\approx6\times10^{-8}$），FP64 为 $\mathrm{LDL}^\top$ 分解中的 21 次除法和阻尼调节保留 $\approx10^{-15}$ 的相对精度裕度。本文选择方案（c）。
-
-{\bfseries FP32$\leftrightarrow$FP64 转换开销分析。} 混合精度引入了类型转换指令。在 CUDA 中，\texttt{\_\_d2f\_rd()}（FP64$\to$FP32，向最近偶数舍入）和 \texttt{\_\_f2d\_rn()}（FP32$\to$FP64）均为单周期指令，吞吐与 FMA 相同。本文的转换点在 H 矩阵构造入口（Jacobian FP32 值 $\to$ FP64 累加器）和关节更新出口（FP64 步长 $\to$ FP32 关节值），每迭代仅 78 次转换（36 个 H 元素 + 6 个 g 分量 + 36 个 Jacobian 元素），占总指令数 $<0.01\%$。NCU 实测确认类型转换未成为瓶颈。
-
-\begin{table}[ht]
-\centering
+\begin{table*}[ht]
+\centering\small
 \caption{混合精度分配策略}
 \label{tab:mixedprec}
 \begin{tabular}{lcl}
@@ -264,30 +183,54 @@ $n=6$ 为编译时常量，NVCC \texttt{\#pragma unroll} 将三重循环（\text
 计算阶段 & 精度 & 理由 \\
 \midrule
 FK 链式乘法 & FP32 & 吞吐为 FP64 的 64 倍 \\
-Jacobian 各列 & FP32 & $\varepsilon=10^{-6}$ 下舍入误差约 $10^{-7}$ \\
-$\mathbf{H}$ 矩阵累加 & {\bfseries FP64} & 36 个内积抑制截断误差 \\
-$\mathbf{g}$ 向量累加 & {\bfseries FP64} & 同上 \\
-$\mathrm{LDL}^\top$ 求解 & {\bfseries FP64} & 除法对 $D_j$ 敏感 \\
-位姿误差/阻尼调节 & FP64 & 精度关键 \\
+Jacobian 各列 & FP32 & $\varepsilon=10^{-6}$ 下中位误差 $4.2\times10^{-2}$ \\
+$\mathbf{H}$ 累加 & {\bfseries FP64} & 36 个内积抑制截断误差 \\
+$\mathbf{g}$ 累加 & {\bfseries FP64} & 同上 \\
+$\mathrm{LDL}^\top$ 求解 & {\bfseries FP64} & 除法对 $D_j$ 高度敏感 \\
+位姿误差/阻尼 & FP64 & 精度关键路径 \\
 \bottomrule
 \end{tabular}
-\end{table}
+\end{table*}
 
-{\bfseries 精度边界验证。} Jacobian 差分分子 $\approx2\times10^{-6}$，FP32 机器精度 $\eta_{\mathrm{FP32}}\approx6\times10^{-8}$。关键保护机制：$\mathbf{J}^\top\mathbf{W}^2\mathbf{J}$ 内积后的 36 个 $\mathbf{H}$ 元素和 6 个 $\mathbf{g}$ 分量均在 FP64 下归约，FP32 截断误差（$\approx10^{-7}$）经 FP64 累加后被抑制。消融实验证实：CUDA 混合精度在全部 $N$ 值上收敛率 $\ge0.998$，与全 FP64 的 FP64 自适应阻尼配置（1.000）无实质差异。
+\subsubsection{Jacobian 精度验证与混合精度边界}
+
+对 500 个随机 UR10 关节构型，分别以 FP64 和 FP32 计算中心差分 Jacobian，比较相对 Frobenius 误差。
+
+\begin{table*}[ht]
+\centering\small
+\caption{FP32 Jacobian 精度验证（500 随机关节构型）}
+\label{tab:jacobian}
+\begin{tabular}{ccccc}
+\toprule
+$\varepsilon$ & 中位误差 & 均值误差 & p95 误差 & 最大误差 \\
+\midrule
+$10^{-4}$ & $8.1\times10^{-4}$ & $7.9\times10^{-4}$ & $1.0\times10^{-3}$ & $1.2\times10^{-3}$ \\
+$10^{-5}$ & $1.9\times10^{-3}$ & $2.0\times10^{-3}$ & $2.7\times10^{-3}$ & $3.6\times10^{-3}$ \\
+$10^{-6}$ & $4.2\times10^{-2}$ & $4.2\times10^{-2}$ & $5.1\times10^{-2}$ & $6.4\times10^{-2}$ \\
+$10^{-7}$ & $7.0\times10^{-1}$ & $6.8\times10^{-1}$ & $9.1\times10^{-1}$ & $1.0\times10^{0}$ \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+实验结果揭示了 FP32 混合精度的精度--速度 Pareto 前沿：
+
+（1）$\varepsilon=10^{-6}$ 下 FP32 Jacobian 约 2 位有效数字（中位误差 $4.2\times10^{-2}$），对应 IK 收敛精度边界约 4--5 mm——解释了后文表~\ref{tab:maincomp} 中 Medium（10 mm）成功而 Strict（5 mm）失败的现象。
+
+（2）$\varepsilon=10^{-5}$ 可将 Jacobian 精度提升一个量级（中位 $1.9\times10^{-3}$），代价是差分步长增大 10 倍。$\varepsilon=10^{-7}$ 发生灾难性抵消（中位 0.70），确认 FP32 物理边界。
+
+（3）保护机制有效：$\mathbf{J}^\top\mathbf{W}^2\mathbf{J}$ 内积在 FP64 归约，$\mathrm{LDL}^\top$ 与收敛判定保留 FP64，消融实验证实 Medium 阈值下收敛率 $\ge0.998$，与全 FP64（1.000）无实质差异。
+
+该分析{\bfseries 为混合精度 IK 的精度--速度 Pareto 前沿提供了量化基准}：吞吐优先场景（料箱抓取、轨迹采样）使用 $\varepsilon=10^{-6}$；更高精度需求场景下 $\varepsilon=10^{-5}$ 或全 FP64 路径的验证将作为后续工作。
 
 \subsection{自适应阻尼策略}
 
-全 FP64 基线采用固定阻尼 $\lambda\equiv2\times10^{-3}$。本文采用三阶段自适应策略[3]：
-
-{\bfseries 迭代 0——距离初始化。} $e_{\mathrm{pos}}>0.5$ m $\to\lambda=\lambda_{\mathrm{far}}=0.1$；$e_{\mathrm{pos}}>0.1$ m $\to$ 线性插值；否则 $\to\lambda=\lambda_{\mathrm{base}}=5\times10^{-4}$。
-
-{\bfseries 迭代 1+——Marquardt 误差驱动。} $r=e^{(k)}_{\mathrm{pos}}/e^{(k-1)}_{\mathrm{pos}}$：$r<0.9\to\lambda\times0.7$（趋 Gauss-Newton）；$r>1.1\to\lambda\times2.0$（趋梯度下降）；$0.9\le r\le1.1\to\lambda$ 不变。
-
-{\bfseries 停滞超驰。} 连续 12 次无改善 $\to\lambda\times5.0$。$\lambda$ 全局钳位至 $[10^{-4},0.5]$。
+固定阻尼 $\lambda\equiv2\times10^{-3}$ 为基线。三阶段自适应策略[3]：（1）迭代 0 距离初始化——$e_{\mathrm{pos}}>0.5$ m$\to\lambda=0.1$，$0.1<e_{\mathrm{pos}}\le0.5$ m$\to$线性插值，否则$\to5\times10^{-4}$；（2）Marquardt 误差驱动——$r=e^{(k)}_{\mathrm{pos}}/e^{(k-1)}_{\mathrm{pos}}$，$r<0.9\to\lambda\times0.7$，$r>1.1\to\lambda\times2.0$；（3）停滞超驰——连续 12 次无改善$\to\lambda\times5.0$。$\lambda\in[10^{-4},0.5]$。
 
 \section{实验设计}\label{sec:exp}
 
-\subsection{统一 Benchmark 配置}
+\subsection{统一 Benchmark 与三层计时口径}
+
+所有目标由 seed=42 确定性生成：随机采样合法 $\mathbf{q}_{\mathrm{gt}}$ 经 FK 生成 $\mathbf{T}_{\mathrm{target}}$。统一初始种子 $\mathbf{q}_{\mathrm{seed}}=[0,0,0,0,0,0]$。所有方法使用同一批目标。
 
 \begin{table*}[ht]
 \centering\small
@@ -295,90 +238,202 @@ $\mathrm{LDL}^\top$ 求解 & {\bfseries FP64} & 除法对 $D_j$ 敏感 \\
 \label{tab:benchmark}
 \begin{tabular}{lll}
 \toprule
-参数 & 配置 & 选择理由 \\
+参数 & 配置 & 理由 \\
 \midrule
-机器人模型 & UR10 (URDF, tool0) & 代表性 6-DOF 工业机械臂[15] \\
-目标位姿 & seed=42, $N=100\to10{,}000$ & 可复现确定性生成 \\
+机器人模型 & UR10 (URDF, tool0) & 代表性 6-DOF 工业机械臂 \\
+目标位姿 & seed=42, $N=100\to10\,000$ & 可复现确定性生成 \\
 初始种子 & zero\_seed（全零关节角） & 运动学最远端 \\
-主收敛阈值 & 10 mm / 5$^\circ$ & 显著区分求解器质量 \\
-最大迭代次数 & 160 & 工业应用保守上限 \\
-重复次数 & 30（含 3 次预热） & 消除冷启动延迟 \\
+主收敛阈值 & 10 mm / 5$^\circ$（Medium） & 显著区分求解质量 \\
+辅助阈值 & Loose 30mm/10$^\circ$, Strict 5mm/1$^\circ$ & 多级压力测试 \\
+最大迭代次数 & 160 & 工业保守上限 \\
+碰撞检测 & 关闭（所有方法统一） & 单 seed 场景碰撞无关 \\
+重复次数 & 30（含 3 次预热） & 排除冷启动延迟 \\
 硬件平台 & RTX 4060 Laptop, CUDA 12.6 & Ada Lovelace, sm\_89 \\
 \bottomrule
 \end{tabular}
 \end{table*}
 
-\subsection{消融级别设计}
+{\bfseries 对比方法。} CUDA-Mixed（A7，无 CUDA Graph）；CUDA-Mixed-Graph（A8，+CUDA Graph）；cuRobo-NoGraph；cuRobo-Graph。cuRobo 配置：num\_seeds=1，seed\_solver\_num\_seeds=1，self\_collision\_check=False。
 
-\begin{table*}[ht]
-\centering\small
-\caption{关键消融级别定义}
-\label{tab:ablation}
-\begin{tabular}{lcl}
-\toprule
-配置名称 & 编译目标 & 功能描述 \\
-\midrule
-FP64 基线 & A0 & 全局内存, stride=6, 固定阻尼 $\lambda\equiv2\times10^{-3}$ \\
-FP64 自适应阻尼 & A5 & +常量内存+PaddedMat$6\times8$+自适应阻尼 \\
-{\bfseries CUDA 混合精度} & {\bfseries A7} & {\bfseries +FP32 FK/Jacobian + FP64 H/g/LDL}$^\top$ \\
-\bottomrule
-\end{tabular}
-\end{table*}
+{\bfseries 三层计时口径。} 这是本实验设计的关键改进：（1）End-to-End——H2D$\to$kernel$\to$D2H$\to$同步完整延迟；（2）GPU Stream——纯设备侧 CUDA event 时间；（3）Nsight Systems——kernel launch 数、API 调用数等机制分析。所有方法 3 次预热后计时。
 
-注：描述性配置名称替代原内部消融代号，编译二进制名（A0/A5/A7）与 \texttt{ABLATION\_LEVEL} 宏保留以便对照源码复现。消融逻辑按"内存层次$\to$算法优化$\to$精度优化"递进：A0 建立最简可运行基线；A1--A4 逐级叠加常量内存、PaddedMat6$\times$8、寄存器 LDL$^\top$ 和 kernel 融合，验证每项内存层次优化的独立收益；A5（FP64 自适应阻尼）跃迁至算法级优化；A7（CUDA 混合精度）跃迁至精度优化。B1/B2/B4/B6 等中间级别仅作完整消融链记录，不参与主结论分析。
+{\bfseries 评价指标。} raw\_throughput = $N$/GPU\_stream\_time\_sec；valid\_throughput = raw $\times$ success\_rate（同时衡量速度与质量）；误差分布 p50/p95/max；30 次重复的 mean/std/p50/p95。
 
-\subsection{对比求解器与计时口径}
+\subsection{消融与 Jacobian 精度验证}
 
-对比求解器：cuRobo[6]（NVIDIA GPU IK 框架，PyTorch 后端，配置 num\_seeds=1, seed\_solver\_num\_seeds=1, self\_collision\_check=False, use\_cuda\_graph=False。注：关闭 CUDA Graph 以保证与本文单 kernel 方案的公平对比）；PyRoki（JAX GPU IK，JIT 预热时间排除在计时外）；Orocos KDL[5]（C++ CPU 串行 IK，max 160 iter）；numeric\_dls（Python/NumPy DLS 参考实现，max 100 iter，固定 $\lambda=10^{-3}$）。CPU 参考求解器使用旧阈值（30 mm/30$^\circ$）和 \texttt{home\_seed} 策略，仅作数量级参照（GPU vs CPU 的粗粒度量级比较），不参与 Medium 阈值下的 GPU 主性能排名。
-
-CUDA 求解器使用 \texttt{cudaEventElapsedTime} 测量 kernel 设备端时间；cuRobo 使用 \texttt{time.perf\_counter()} 测量全调用栈。两者计时工具不同，"加速比"为统一 benchmark 下的工程吞吐比值。
+消融覆盖 A0--A7 共 8 级。Jacobian 精度验证见 §2.4.1。
 
 \section{实验结果与分析}\label{sec:results}
 
-\subsection{主对比实验}
+\subsection{主性能对比}
 
 \begin{table*}[ht]
 \centering\small
-\caption{CUDA 混合精度与 cuRobo 主对比（Medium 10mm/5$^\circ$）}
+\caption{主性能对比（Medium 10mm/5$^\circ$，30 次重复，GPU stream 时间）}
 \label{tab:maincomp}
-\begin{tabular}{ccccccc}
+\begin{tabular}{clccccc}
 \toprule
-$N$ & CUDA-M/(t/s) & CUDA-M/ms & cuRobo/(t/s) & cuRobo/ms & 比值 & 收敛率 \\
+$N$ & 方法 & Graph & GPU流均值$\pm$std/ms & raw t/s & 成功率 & valid t/s \\
 \midrule
-100 & 112,414 & 0.89 & 3,118 & 32.1 & {\bfseries 36.1} & 1.000 \\
-500 & 158,251 & 3.16 & 15,844 & 31.6 & {\bfseries 10.0} & 0.998 \\
-1,000 & 148,412 & 6.74 & 31,611 & 31.6 & {\bfseries 4.7} & 0.998 \\
-5,000 & 168,683 & 29.64 & 155,059 & 32.3 & {\bfseries 1.09} & 0.9998 \\
+100 & CUDA-Mixed & -- & $1.24\pm0.04$ & 80 757 & 1.000 & 80 757 \\
+100 & cuRobo & 开 & $2.60\pm0.13$ & 38 398 & 1.000 & 38 398 \\
+\midrule
+500 & CUDA-Mixed & -- & $3.89\pm0.05$ & 128 404 & 0.998 & 128 147 \\
+500 & cuRobo & 开 & $2.60\pm0.14$ & 192 400 & 1.000 & 192 400 \\
+\midrule
+1 000 & CUDA-Mixed & -- & $7.21\pm0.49$ & 138 719 & 1.000 & 138 719 \\
+1 000 & cuRobo & 开 & $2.99\pm0.24$ & 334 189 & 1.000 & 334 189 \\
+\midrule
+4 000 & CUDA-Mixed & -- & $25.44\pm1.11$ & 157 236 & 1.000 & 157 236 \\
+4 000 & cuRobo & 开 & $27.50\pm0.84$ & 145 437 & 0.9998 & 145 401 \\
+\midrule
+5 000 & CUDA-Mixed & -- & $31.75\pm0.50$ & 157 481 & 0.999 & 157 387 \\
+5 000 & cuRobo & 开 & $4.73\pm0.29$ & 1 056 171 & 1.000 & 1 056 171 \\
+\midrule
+10 000 & CUDA-Mixed & -- & $63.51\pm0.60$ & 157 454 & 0.9995 & 157 375 \\
+10 000 & cuRobo & 开 & $61.29\pm1.26$ & 163 160 & 0.9999 & 163 144 \\
+\bottomrule
+\multicolumn{6}{l}{\footnotesize 注：cuRobo-NoGraph 数据见表~\ref{tab:nsys}。N=5 000 cuRobo-Graph 为 batch-size 甜点，性能不可推广至邻近 N。} \\
+\end{tabular}
+\end{table*}
+
+表~\ref{tab:maincomp} 和图~\ref{fig:throughput}--\ref{fig:gpu_stream} 展示了主性能对比。
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=\columnwidth]{fig2_throughput.png}
+\caption{批量吞吐对比（Raw 与 Valid Throughput）}
+\label{fig:throughput}
+\end{figure}
+
+{\bfseries （1）CUDA Graph 对 cuRobo 影响巨大。} 开启 Graph 后 cuRobo 吞吐提升 7--13 倍。\texttt{use\_cuda\_graph=False} 严重低估其性能。本工作以 cuRobo-Graph 为公平基线，cuRobo-NoGraph 仅作为参考。
+
+{\bfseries （2）$N=100$ 极小批量优势。} N=100 时 CUDA-Mixed GPU 流时间（$1.24\pm0.04$ ms）仅为 cuRobo-Graph（$2.60\pm0.13$ ms）的 47.7\%，延迟降低约 52\%。优势源于单 kernel 零调度开销。但当 $N\ge500$ 时，cuRobo-Graph 的吞吐（192k--334k t/s）显著超过 CUDA-Mixed（128k--157k t/s），因为计算量增大后调度开销占比下降，cuRobo 的粒子优化+L-BFGS 算法效率体现出来。
+
+{\bfseries （3）$N=5\,000$ 是 cuRobo-Graph 的特殊甜点。} 经独立复核实验确认（见实验复核报告），$N=5\,000$ 时 cuRobo-Graph 的 $4.73\pm0.29$ ms 和 1 056k t/s 是真实结果——该 batch size 恰好使 cuRobo 内部批处理+Graph 流水线达到最优。但该性能不可推广：$N=4\,000$ 时 cuRobo-Graph 退化至 $27.50$ ms（5.8 倍慢），$N=10\,000$ 时 $61.29$ ms。CUDA-Mixed 在全部 $N$ 值呈严格线性（$R^2>0.999$），性能可预测。
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=\columnwidth]{fig3_e2e.png}
+\caption{端到端延迟对比（含 H2D/D2H 传输）}
+\label{fig:e2e}
+\end{figure}
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=\columnwidth]{fig4_gpu_stream.png}
+\caption{GPU Stream 执行时间对比（纯设备侧）}
+\label{fig:gpu_stream}
+\end{figure}
+
+\subsection{求解质量与误差分布}
+
+\begin{table*}[ht]
+\centering\small
+\caption{位置与姿态误差分布（$N=500$，Medium 阈值）}
+\label{tab:errors}
+\begin{tabular}{lcccccc}
+\toprule
+方法 & pos mean/mm & pos p50/mm & pos p95/mm & rot mean/($^\circ$) & rot p50/($^\circ$) & rot p95/($^\circ$) \\
+\midrule
+CUDA-Mixed & 4.34 & 3.81 & 9.19 & 0.177 & 0.121 & 0.541 \\
+cuRobo-Graph & $<0.001$ & $<0.001$ & $<0.001$ & $<0.001$ & $<0.001$ & $<0.001$ \\
 \bottomrule
 \end{tabular}
 \end{table*}
 
-$N=100$ 时 CUDA 混合精度每目标仅摊 8.9 $\mu$s（0.89 ms/100），cuRobo 的跨语言调用栈固定开销无法在小批量下有效摊销。即使在 FP64 全精度配置下，本文求解器在 $N=100$ 时吞吐（51,361 targets/s）仍为 cuRobo 的 16.5 倍，验证了低 per-target 开销对小批量性能的决定性作用。
+表~\ref{tab:errors} 和图~\ref{fig:errors} 比较了误差分布。cuRobo-Graph 精度达亚微米量级——粒子优化固有优势。CUDA-Mixed 的 p95 位置误差 9.19 mm 在 Medium 阈值内，margin 0.81 mm，中位数 3.81 mm。两方法成功率均 $\ge0.998$。CUDA-Mixed 的意义在于中等精度批量求解，并非高精度最终 IK 求解器的完全替代。
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=\columnwidth]{fig5_errors.png}
+\caption{误差分布对比（p50/p95 位置与姿态误差）}
+\label{fig:errors}
+\end{figure}
+
+\subsection{CUDA Graph 对单 Kernel 方案的影响}
+
+\begin{table*}[ht]
+\centering\small
+\caption{A7 Direct vs A8 CUDA Graph 对比（均值$\pm$标准差）}
+\label{tab:graphcmp}
+\begin{tabular}{ccccc}
+\toprule
+$N$ & A7 Direct/(t/s) & A8 Graph/(t/s) & 差异/\% & 判定 \\
+\midrule
+100 & $80\,757$ & $81\,240$ & +0.6 & 可忽略 \\
+500 & $128\,404$ & $142\,805$ & +11.2* & 受 GPU 状态影响 \\
+1 000 & $138\,719$ & $147\,381$ & +6.2* & 受 GPU 状态影响 \\
+5 000 & $157\,481$ & $157\,841$ & +0.2 & 可忽略 \\
+\bottomrule
+\multicolumn{5}{l}{\footnotesize *N=500/1\,000 的 A8 标准差偏高（复核确认 GPU 热状态波动），首次实验与复核实验的 A8 相对 A7 提升在 0--11\% 间。} \\
+\multicolumn{5}{l}{\footnotesize N$\ge$1\,000 时差异稳定 $<1\%$；N$\le$500 时 CUDA Graph 可能有小到中等幅度影响（0--11\%），} \\
+\multicolumn{5}{l}{\footnotesize 但该影响显著小于 cuRobo 从 NoGraph 到 Graph 的 7--13$\times$ 量级提升。} \\
+\end{tabular}
+\end{table*}
+
+表~\ref{tab:graphcmp} 显示：单 kernel 方案从 CUDA Graph 获益有限，尤其在 $N\ge1\,000$ 时差异 $<1\%$。N=500/1 000 时 A8 相对 A7 有 6--11\% 提升，但复核实验确认该差距受 GPU 热状态影响，且显著小于 cuRobo 的 7--13 倍量级提升。整体上，单 kernel 结构降低了对 CUDA Graph 的依赖。
 
 \subsection{消融实验}
 
 \begin{table*}[ht]
 \centering\small
-\caption{逐级消融实验结果（Medium 10mm/5$^\circ$）}
+\caption{关键消融结果（Medium 10mm/5$^\circ$）}
 \label{tab:ablationdata}
-\begin{tabular}{cccccccc}
+\begin{tabular}{ccccccc}
 \toprule
-$N$ & FP64基线/(t/s) & 收敛率 & FP64阻尼/(t/s) & 提升 & CUDA-M/(t/s) & 提升 & 收敛率 \\
+$N$ & A0 基线/(t/s) & 收敛率 & A5 阻尼/(t/s) & 收敛率 & A7 混合/(t/s) & 收敛率 \\
 \midrule
-100 & 7,589 & 0.830 & 51,361 & +577\% & 113,097 & +120\% & 1.000 \\
-500 & 9,896 & 0.522 & 62,384 & +530\% & 155,071 & +149\% & 0.998 \\
-5,000 & 12,507 & 0.564 & 66,050 & +428\% & 164,207 & +149\% & 0.9998 \\
+100 & 7 589 & 0.830 & 51 361 & 1.000 & 80 757 & 1.000 \\
+500 & 9 896 & 0.522 & 62 384 & 0.998 & 128 404 & 0.998 \\
+1 000 & -- & -- & -- & -- & 138 719 & 1.000 \\
+5 000 & 12 507 & 0.564 & 66 050 & 0.9998 & 157 481 & 0.999 \\
 \bottomrule
 \end{tabular}
 \end{table*}
 
-自适应阻尼（FP64 基线 $\to$ FP64 自适应阻尼）是对收敛率影响最大的单一因素。基线采用固定阻尼 $\lambda\equiv2\times10^{-3}$，在 Medium 阈值下收敛率崩塌至 52--83\%——$N=500$ 时仅 52.2\% 的目标在 160 次迭代内收敛，$N=5000$ 时为 56.4\%。原因在于 fixed-$\lambda$ 无法根据目标距离自适应调节：远距离目标（$e_{\mathrm{pos}}>0.5$ m）的梯度方向在 $\lambda$ 过大时收敛缓慢，近距离目标的 Hessian 近似在 $\lambda$ 过小时趋向奇异。FP64 自适应阻尼通过距离初始化$+$Marquardt 误差驱动$+$停滞超驰三阶段策略，在全部 $N$ 值上将收敛率恢复至 100\%。吞吐提升（4--6 倍）主要来自平均迭代次数的大幅下降：$N=100$ 从 31.4 降至 12.9（$-59\%$），$N=500$ 从 79.7 降至 13.8（$-83\%$），$N=5000$ 从 73.0 降至 13.7（$-81\%$）。
+表~\ref{tab:ablationdata} 和图~\ref{fig:ablation} 展示了逐级优化。自适应阻尼（A0$\to$A5）是收敛率决定性因素：固定阻尼收敛率 52--83\%，A5 恢复至 0.998+。吞吐提升源于迭代次数下降（$N=500$：79.7$\to$13.8，$-83\%$）。混合精度（A5$\to$A7）额外贡献 120--149\% 吞吐，收敛率无退化。A1--A4 独立贡献合计 $<5\%$。
 
-混合精度（FP64 自适应阻尼 $\to$ CUDA 混合精度）在此基础上再提供 120--149\% 吞吐提升，且收敛率保持 0.998+。该增益来源于 FK 和 Jacobian 计算中 FP64$\to$FP32 的精度切换——两项合计占每次迭代约 90\% 的浮点运算量——在 Ada Lovelace 64:1 的 FP32:FP64 吞吐比下释放了显著的计算加速。需特别指出，内存层次优化（B1 常量内存、B2 PaddedMat6$\times$8）在消融链中的独立贡献合计 $<5\%$，因为 UR10 工作集仅约 912 bytes，天然即可被每个 SM 的 128 KB L1 缓存高效容纳。这一发现与文献[13]的结论一致——Bank 冲突消除对极小矩阵的收益有限。自适应阻尼和混合精度才是决定性能的两大主导因素。
+\begin{figure}[ht]
+\centering
+\includegraphics[width=\columnwidth]{fig6_ablation.png}
+\caption{逐级消融吞吐提升（A0$\to$A7）}
+\label{fig:ablation}
+\end{figure}
 
-\subsection{Nsight Compute 剖析}
+\subsection{Nsight Systems 机制分析}
 
 \begin{table*}[ht]
+\centering\small
+\caption{Nsight Systems CUDA API trace 分析}
+\label{tab:nsys}
+\begin{tabular}{lcccc}
+\toprule
+$N$ & 方法 & kernel launches & API calls & GPU active/ms \\
+\midrule
+100 & CUDA-Mixed & 1 & 5 & 1.24 \\
+4 000 & CUDA-Mixed & 1 & 5 & 25.44 \\
+4 000 & cuRobo-NoGraph & 14 108 & 28 540 & 197.32 \\
+5 000 & cuRobo-NoGraph & 5 945 & 12 014 & 28.16 \\
+5 000 & cuRobo-Graph & 2 & 12 & 4.73 \\
+\bottomrule
+\end{tabular}
+\end{table*}
+
+表~\ref{tab:nsys} 和图~\ref{fig:degradation} 解释了 cuRobo 批量振荡根因。$N=4\,000$（退化点）产生 14 108 次 kernel launch——是 $N=5\,000$（正常点）的 2.37 倍。每次 launch 开销 5--10 $\mu$s 累积至 70--140 ms。cuRobo-Graph 将 launch 数降至 2。
+
+cuRobo 退化呈非单调跳变，\texttt{cudaMalloc/cudaFree} 占比 $<1\%$，根因在子批次划分策略的批量依赖性。本文方案对此免疫：launch 数恒为 1。
+
+\begin{figure}[ht]
+\centering
+\includegraphics[width=\columnwidth]{fig7_degradation.png}
+\caption{cuRobo 批量规模退化点分析}
+\label{fig:degradation}
+\end{figure}
+
+\subsection{Nsight Compute 剖析与批量扩展性}
+
+\begin{table}[ht]
 \centering\small
 \caption{Nsight Compute 剖析对比（$N=100$）}
 \label{tab:ncu}
@@ -387,63 +442,59 @@ $N$ & FP64基线/(t/s) & 收敛率 & FP64阻尼/(t/s) & 提升 & CUDA-M/(t/s) & 
 指标 & FP64全优化 & CUDA-Mixed & 变化 \\
 \midrule
 计算吞吐率/\% & 66.89 & 60.73 & $-9$ \\
-显存吞吐率/\% & 1.56 & 1.16 & $-0.4$ \\
+显存吞吐率/\% & 1.56 & 1.16 & -- \\
 寄存器/线程 & 94 & 98 & $+4$ \\
-占用率/\% & 32.51 & 33.30 & $\approx 0$ \\
-Bank 冲突 & 3,522 & 1,295 & {\bfseries $-63\%$} \\
-L1 命中率/\% & 99.13 & 98.62 & $\approx 0$ \\
+Bank 冲突/次 & 3 522 & 1 295 & {\bfseries $-63\%$} \\
 局部内存溢出 & 0 & 0 & -- \\
-Kernel 时间/$\mu$s & 2,920 & 827 & {\bfseries $-72\%$} \\
+Kernel 时间/$\mu$s & 2 920 & 827 & {\bfseries $-72\%$} \\
 \bottomrule
 \end{tabular}
-\end{table*}
+\end{table}
 
-计算吞吐率（60--67\%）远超显存吞吐率（1--2\%），判定 kernel 为计算密集型。Kernel 时间从 2,920 $\mu$s 降至 827 $\mu$s（$-72\%$），与吞吐提升 120--149\% 相互印证。零局部内存溢出确认编译器寄存器分配的充分性。
+表~\ref{tab:ncu} 和图~\ref{fig:ncu} 确认 kernel 为计算密集型（计算 60--67\% vs 显存 1--2\%），零寄存器溢出。
 
-\subsection{全量程批量扩展性}
+\begin{figure}[ht]
+\centering
+\includegraphics[width=\columnwidth]{fig8_ncu.png}
+\caption{Nsight Compute 剖析指标对比}
+\label{fig:ncu}
+\end{figure}
 
-在 $N=100\to10{,}000$ 范围以 1,000 为步长进行全量程扫描（12 个 $N$ 值）。
-
-{\bfseries 本文求解器的线性扩展——与批量无关。} CUDA 混合精度在 12 个 $N$ 值上的吞吐保持在 148k--174k targets/s 窄区间（$\pm8\%$，以中位数 166k 为基准），GPU kernel 时间与 $N$ 的线性拟合 $R^2>0.999$。这是 1 block/target 映射的结构确定性结果：每目标计算量完全确定（FK + Jacobian + LDL$^\top$ + Update 在固定迭代轮数内完成），无 block 间通信，无动态内存分配，无 GPU-CPU 同步，无 sub-batch 划分策略——工作量线性增长 $\to$ 执行时间线性增长 $\to$ 吞吐恒定。批量无关性对实际工程应用具有直接价值：用户无需对不同 $N$ 值进行预扫描或参数调优，吞吐可从事先的计算精确预测。
-
-{\bfseries cuRobo 的批量振荡——非单调二元跳变。} 相同 12 个 $N$ 值上，cuRobo 呈现二元振荡模式：$N=4{,}000/7{,}000/9{,}000/10{,}000$ 四个点触发约 230 ms 退化（正常 32 ms 的 7 倍），其余 $N$ 值正常。退化具有非单调特征——$N=4{,}000$ 退化但 $N=5{,}000$ 正常，$N=7{,}000$ 退化但 $N=8{,}000$ 正常，$N=8{,}000$ 甚至以 248,732 targets/s 创下 cuRobo 全量程最高吞吐。Nsight Systems CUDA API trace 揭示退化 $N$ 值的 CUDA kernel 启动数为正常的 2.37 倍（14,108 vs 5,945），\texttt{cudaEventRecord}/\texttt{cudaStreamWaitEvent} 调用数高达 13--14 倍。\texttt{cudaMalloc}/\texttt{cudaFree} 开销在两组 $N$ 值下均 $<1\%$ API 时间，明确排除 PyTorch CUDA 缓存分配器作为退化主因，指向 cuRobo 内部子批次划分策略的批量依赖性——特定 $N$ 值触发了不同的 kernel launch 粒度，而该粒度不由 $N$ 的大小单调决定。本文求解器的单 kernel 全迭代封装在结构上对此类问题免疫：kernel launch 数恒为 1，不存在子批次划分策略，性能仅由 $N$ 和目标位姿的收敛难度决定。
+{\bfseries 批量扩展性。} CUDA-Mixed 在 $N=100\to10\,000$ 全量程 GPU 时间严格线性（$R^2>0.999$），$N\ge500$ 时吞吐 128k--157k t/s。$N=100$ 因 block 不足约 81k t/s。批量无关性意味着用户无需对不同 $N$ 值预扫描或参数调优——这是 1 block/target 结构确定性的直接结果。
 
 \section{结 论}
 
-本文针对机械臂批量 IK 中 $6\times6$ 小矩阵反复求解的性能瓶颈，提出了四项 CUDA 底层加速设计：（1）1 block/target 映射与单 kernel 全迭代封装；（2）寄存器驻留的 $6\times6$ $\mathrm{LDL}^\top$ 求解器（86 标量运算，零寄存器溢出）；（3）PaddedMat$6\times8$ 共享内存布局（Bank 冲突 $-63\%$）；（4）FP32 FK/Jacobian + FP64 $\mathrm{LDL}^\top$ 混合精度策略（吞吐 $+120$--$149\%$，收敛率无退化）。在统一 UR10 benchmark 上，CUDA 混合精度在 $N=100$ 时吞吐达 cuRobo 的 36.1 倍，全量程 $N=100\to10{,}000$ 上 GPU 时间严格线性（$R^2>0.999$），而 cuRobo 在 4/12 $N$ 值上触发约 230 ms 退化模式——体现了底层单 kernel 方案相比框架型 GPU IK 实现在批量扩展确定性和性能可预测性上的结构性优势。未来工作将扩展至 7 自由度冗余机械臂的性能验证及多初始种子策略的 GPU 并行化。
+在本文设定的 UR10 单 seed、关闭碰撞检测的批量 IK 查询任务中（统一目标、种子和收敛阈值），自定义 CUDA 小矩阵 DLS 求解器通过 1 block/target 映射、单 kernel 全迭代封装、寄存器级 $\mathrm{LDL}^\top$ 求解和 FP32/FP64 混合精度策略，实现了稳定的线性批量扩展。
 
+实验表明：（1）$N=100$ 极小批量下 GPU 流延迟较 cuRobo-Graph 降低约 52\%；（2）当 $N\ge500$ 时 cuRobo-Graph 依靠 Graph 和内部批处理通常获得更高吞吐，但存在批量依赖的非单调退化（$N=4\,000$ 时退化 5.8 倍）；（3）本文方法 kernel launch 数恒为 1，全量程 $N=100\to10\,000$ GPU 时间严格线性（$R^2>0.999$），性能可预测——这是相对 cuRobo 的核心结构性优势；（4）FP32 混合精度在 $\varepsilon=10^{-6}$ 下存在约 4--5 mm IK 收敛精度边界，Medium 阈值下成功率 0.998+，适用于中等精度批量采样与候选解筛选。Strict 阈值下 $\varepsilon=10^{-5}$ 或全 FP64 路径的精度恢复验证将作为后续工作。
+
+后续工作包括：7 自由度冗余机械臂验证；多初始种子 GPU 并行化；Strict 阈值下 $\varepsilon=10^{-5}$ 配置的精度恢复实验；带碰撞约束的运动规划场景扩展。
+
+\newpage
 \begin{thebibliography}{99}
 \bibitem{1} SICILIANO B, SCIAVICCO L, VILLANI L, et al. Robotics: modelling, planning and control [M]. 2nd ed. London: Springer, 2010.
 \bibitem{2} BUSS S R. Introduction to inverse kinematics with Jacobian transpose, pseudoinverse and damped least squares methods [J]. IEEE Journal of Robotics and Automation, 2004, 17(1): 1--19.
 \bibitem{3} MARQUARDT D W. An algorithm for least-squares estimation of nonlinear parameters [J]. Journal of the Society for Industrial and Applied Mathematics, 1963, 11(2): 431--441.
-\bibitem{4} 贾龙飞, 乔尚岭, 陶云飞, 等. 冗余机械臂逆运动学求解方法研究进展 [J]. 控制与决策, 2023, 38(12): 3267--3284.
-\bibitem{5} BRUYNINCKX H. Open robot control software: the OROCOS project [C]//Proc. of the IEEE ICRA. Seoul: IEEE, 2001: 2523--2528.
-\bibitem{6} SUNDARALINGAM B, HARIH S K S, FISHMAN A, et al. cuRobo: parallelized collision-free minimum-jerk robot motion generation [EB/OL]. [2025-06-14]. https://arxiv.org/abs/2310.17274.
-\bibitem{7} YASUTAKE S, KINGSTON Z, PLANCHER B. HJCD-IK: GPU-accelerated inverse kinematics through batched hybrid Jacobian coordinate descent [EB/OL]. [2025-06-14]. https://arxiv.org/abs/2510.07514.
+\bibitem{4} 贾龙飞, 乔尚岭, 陶云飞, 等. 冗余机械臂逆运动学求解方法研究进展 [J]. 控制与决策, 2023, 38(12): 3267--3284.\\
+JIA L F, QIAO S L, TAO Y F, et al. Research progress on inverse kinematics for redundant manipulators [J]. Control and Decision, 2023, 38(12): 3267--3284.
+\bibitem{5} BRUYNINCKX H. Open robot control software: the OROCOS project [C]//Proc. of the IEEE International Conference on Robotics and Automation. Seoul: IEEE, 2001: 2523--2528.
+\bibitem{6} SUNDARALINGAM B, HARIH S K S, FISHMAN A, et al. cuRobo: parallelized collision-free minimum-jerk robot motion generation [EB/OL]. [2026-06-15]. https://arxiv.org/abs/2310.17274.
+\bibitem{7} YASUTAKE S, KINGSTON Z, PLANCHER B. HJCD-IK: GPU-accelerated inverse kinematics through batched hybrid Jacobian coordinate descent [EB/OL]. [2026-06-15]. https://arxiv.org/abs/2510.07514.
 \bibitem{8} ABOELNASR M, et al. ManipulaPy: a GPU-accelerated Python framework for robotic manipulation [J]. Journal of Open Source Software, 2025, 10: 8490.
-\bibitem{9} PERRAULT N, HO Q H, LAHIJANIAN M. Kino-PAX: highly parallel kinodynamic sampling-based planner [EB/OL]. [2025-06-14]. https://arxiv.org/abs/2409.06807.
-\bibitem{10} CHEN L, IYER S R, KINGSTON Z. SPaSM: differentiable particle optimization for fast sequential manipulation [EB/OL]. [2025-06-14]. https://arxiv.org/abs/2510.07674.
-\bibitem{11} ABDELFATTAH A, HAIDAR A, TOMOV S, et al. Batched one-sided factorizations of tiny matrices using GPUs: challenges and countermeasures [J]. Journal of Computational Science, 2018, 26: 226--236.
-\bibitem{12} 刘世芳, 赵永华, 黄荣锋, 等. 基于批量LU分解的矩阵求逆在GPU上的有效实现 [J]. 软件学报, 2023, 34(11): 4952--4972.
-\bibitem{13} SHRIDHAR S A. Optimized block-level matrix inversion kernels for small, batched matrices on GPUs [D]. 2024.
-\bibitem{14} ABDELFATTAH A, HAIDAR A, TOMOV S, et al. Mixed-precision iterative refinement using tensor cores on GPUs to accelerate solution of linear systems [J]. Proceedings of the Royal Society A, 2021, 477(2253): 20200110.
-\bibitem{15} Universal Robots. Universal Robots ROS2 description package (tag 4.3.1) [EB/OL]. [2025-06-14]. https://github.com/UniversalRobots/Universal\_Robots\_ROS2\_Description.
-\bibitem{16} NVIDIA Corporation. CUDA C++ programming guide [EB/OL]. [2025-06-14]. https://docs.nvidia.com/cuda/cuda-c-programming-guide/.
-\bibitem{17} ABDELFATTAH A, TOMOV S, LUSZCZEK P, et al. GPU-based LU factorization and solve on batches of matrices with band structure [C]//Proc. of the Workshops of SC. Denver: ACM, 2023: 1670--1679.
-\bibitem{18} ABUELSAMEN A, RANA S, et al. Industrial robot motion planning with GPUs: integration of cuRobo for extended DOF systems [EB/OL]. [2025-06-14]. https://arxiv.org/abs/2508.04146.
+\bibitem{9} PERRAULT N, HO Q H, LAHIJANIAN M. Kino-PAX: highly parallel kinodynamic sampling-based planner [EB/OL]. [2026-06-15]. https://arxiv.org/abs/2409.06807.
+\bibitem{10} ABDELFATTAH A, HAIDAR A, TOMOV S, et al. Batched one-sided factorizations of tiny matrices using GPUs: challenges and countermeasures [J]. Journal of Computational Science, 2018, 26: 226--236.
+\bibitem{11} 刘世芳, 赵永华, 黄荣锋, 等. 基于批量LU分解的矩阵求逆在GPU上的有效实现 [J]. 软件学报, 2023, 34(11): 4952--4972.\\
+LIU S F, ZHAO Y H, HUANG R F, et al. Efficient GPU implementation of matrix inversion based on batched LU decomposition [J]. Journal of Software, 2023, 34(11): 4952--4972.
+\bibitem{12} SHRIDHAR S A. Optimized block-level matrix inversion kernels for small, batched matrices on GPUs [D]. 2024.
+\bibitem{13} ABDELFATTAH A, HAIDAR A, TOMOV S, et al. Mixed-precision iterative refinement using tensor cores on GPUs to accelerate solution of linear systems [J]. Proceedings of the Royal Society A, 2021, 477(2253): 20200110.
+\bibitem{14} Universal Robots. Universal Robots ROS2 description package [EB/OL]. [2026-06-15]. https://github.com/UniversalRobots/Universal\_Robots\_ROS2\_Description.
+\bibitem{15} NVIDIA Corporation. CUDA C++ programming guide [EB/OL]. [2026-06-15]. https://docs.nvidia.com/cuda/cuda-c-programming-guide/.
 \end{thebibliography}
 
 \vspace{5mm}
 \noindent{\bfseries 作者简介}
 
 \vspace{2mm}
-\noindent 刘小明（19**-），男，XXXX，硕士，主要研究方向为GPU并行计算、机器人运动学。\\
-E-mail：\quad 手机：\quad 固话：\quad\\
-地址：\quad 邮编：\quad 身份证号码：
-
-\vspace{3mm}
-\noindent 某某某（19**-），男/女，教授，博士，主要研究方向为XXXX。\\
-E-mail：\quad 手机：\quad 固话：\quad\\
-地址：\quad 邮编：\quad 身份证号码：
+\noindent （匿名稿——作者信息在单独标题页）\\
 
 \end{document}

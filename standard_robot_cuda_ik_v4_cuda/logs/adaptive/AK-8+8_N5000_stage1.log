@@ -1,0 +1,14 @@
+mode=v4_static
+variant=AK-8+8
+limit_gradient=analytic
+N=5000
+K=8
+repeat=30
+warmup=10
+gpu_stream_ms_mean=1490.17545
+throughput_targets_per_s=3355.3096
+best_csv=/mnt/linuxdata/cuda_ik_accelerateion/standard_robot_cuda_ik_v4_cuda/logs/adaptive/AK-8+8_N5000_stage1.best.csv
+summary_csv=/mnt/linuxdata/cuda_ik_accelerateion/standard_robot_cuda_ik_v4_cuda/logs/adaptive/AK-8+8_N5000_stage1.csv
+
+[elapsed_s] 59.835
+[returncode] 0

@@ -1,0 +1,4 @@
+ERROR: variant opt4_warp_per_seed is intentionally not implemented; use follow-up postmortem outputs for this failed branch
+
+[elapsed_s] 0.198
+[returncode] 2

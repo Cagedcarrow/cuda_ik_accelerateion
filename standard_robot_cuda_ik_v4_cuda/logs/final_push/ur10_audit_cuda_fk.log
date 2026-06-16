@@ -1,0 +1,8 @@
+$ /mnt/linuxdata/cuda_ik_accelerateion/standard_robot_cuda_ik_v4_cuda/build/standard_robot_cuda_v4_runner --mode fk_check --seeds /mnt/linuxdata/cuda_ik_accelerateion/standard_robot_cuda_ik_v4_cuda/data/cuda_inputs/ur10_audit_q_samples_N100_f64.raw --best-csv /mnt/linuxdata/cuda_ik_accelerateion/standard_robot_cuda_ik_v4_cuda/data/results/final_push/ur10_audit_cuda_fk_raw.csv
+
+STDOUT:
+mode=fk_check
+N=100
+output_csv=/mnt/linuxdata/cuda_ik_accelerateion/standard_robot_cuda_ik_v4_cuda/data/results/final_push/ur10_audit_cuda_fk_raw.csv
+
+STDERR:

@@ -1,0 +1,6 @@
+gate,pass,notes
+hard_1_5_correctness_and_static_quality,1,FK/Jacobian/N100 alignment plus N1000 static quality
+speedup_20x,1,python_n1000_s=166 cuda_n1000_s=0.639158 speedup=259.7
+curobo_graph,1,cuRobo-Graph comparison completed for N=100/500/1000/5000
+nsight,1,Nsight Compute basic profiling completed for N=100/1000/5000
+complete_paper_ready,1,all hard gates completed; conclusions must remain conservative on cuRobo speed

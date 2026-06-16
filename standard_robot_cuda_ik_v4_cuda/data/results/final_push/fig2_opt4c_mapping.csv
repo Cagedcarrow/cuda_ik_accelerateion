@@ -1,0 +1,6 @@
+component,mapping
+Grid,N 个目标位姿对应 N 个 block
+Block i,负责第 i 个 target
+Thread 0-15,并行求解 Sobol K16 seeds
+Shared memory,缓存候选 q/cost/success
+Thread 0,执行 fused best selection

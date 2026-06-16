@@ -1,0 +1,16 @@
+method,threshold,N,success_rate,pos_p50_mm,pos_p95_mm,rot_p50_deg,avg_iters,time_s
+V2-DLS-Analytical,Loose(30mm/10deg),200,0.865,15.83,104.89,0.731,40.5,1.4
+V2-DLS-Analytical,Medium(10mm/5deg),200,0.800,5.07,104.89,0.204,48.2,1.6
+V2-DLS-Analytical,Strict(5mm/1deg),200,0.785,2.50,104.89,0.114,51.0,1.7
+V3-LM-Simple(skew),Loose(30mm/10deg),200,0.895,12.59,103.01,1.219,42.5,1.9
+V3-LM-Simple(skew),Medium(10mm/5deg),200,0.815,4.00,103.94,0.449,50.4,2.3
+V3-LM-Simple(skew),Strict(5mm/1deg),200,0.790,1.33,103.94,0.196,53.5,2.5
+V3-LM-Simple(log),Loose(30mm/10deg),200,0.065,174.15,603.65,11.818,152.9,7.5
+V3-LM-Simple(log),Medium(10mm/5deg),200,0.060,174.15,603.65,12.251,153.9,7.6
+V3-LM-Simple(log),Strict(5mm/1deg),200,0.050,174.15,603.65,12.251,154.7,7.6
+V3-LM-Simple-Multi4,Loose(30mm/10deg),200,0.945,9.45,32.21,0.363,34.8,9.9
+V3-LM-Simple-Multi4,Medium(10mm/5deg),200,0.905,3.90,33.23,0.096,41.3,11.4
+V3-LM-Simple-Multi4,Strict(5mm/1deg),200,0.910,1.08,25.30,0.045,39.1,12.4
+V3-LM-Simple-Multi8,Loose(30mm/10deg),200,0.980,7.64,29.58,0.252,32.8,23.5
+V3-LM-Simple-Multi8,Medium(10mm/5deg),200,0.935,2.30,17.43,0.057,36.9,26.6
+V3-LM-Simple-Multi8,Strict(5mm/1deg),200,0.935,0.78,6.35,0.034,34.3,28.3

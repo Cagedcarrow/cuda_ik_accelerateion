@@ -1,0 +1,4 @@
+variant,correctness_pass,N1000_strict_sr,N1000_pos_p95_all_mm,N1000_near_limit,N1000_gpu_stream_ms,N1000_speedup_vs_baseline,N5000_gpu_stream_ms,N5000_speedup_vs_baseline,registers_per_thread,achieved_occupancy,sm_utilization,dram_throughput,branch_divergence,warp_execution_efficiency,spill,paper_decision,notes
+opt4_warp_per_seed,0,,,,,,,,,,,,,,,future_work,original one-warp-per-seed kernel was not promoted; variant returns nonzero and is recorded as failed branch
+opt4c_block_target,1,0.954,4.56313281,0.007,57.3580533,10.384154094016298,274.726237,10.803301579091624,194,16.04,84.24,0.58,2375.97,10.57,0B stores / 0B loads,main_result,target-level K16 mapping with fused best selection
+opt4b_warp_target,1,0.954,4.56313281,0.007,57.4675969,10.364360024248727,276.859213,10.720070890326484,193,16.24,84.19,0.55,2375.97,10.57,0B stores / 0B loads,main_result,target-level K16 mapping with fused best selection

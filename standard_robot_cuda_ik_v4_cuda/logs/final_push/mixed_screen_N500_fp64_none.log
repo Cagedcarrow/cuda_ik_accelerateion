@@ -1,0 +1,18 @@
+mode=v4_static
+variant=opt4c_block_target
+limit_gradient=analytic
+graph_mode=off
+precision_mode=fp64
+fallback_mode=none
+N=500
+K=16
+repeat=30
+warmup=10
+gpu_stream_ms_mean=30.6342485
+throughput_targets_per_s=16321.6016
+best_csv=/mnt/linuxdata/cuda_ik_accelerateion/standard_robot_cuda_ik_v4_cuda/data/results/final_push/mixed_screen_N500_fp64_none.best.csv
+summary_csv=/mnt/linuxdata/cuda_ik_accelerateion/standard_robot_cuda_ik_v4_cuda/data/results/final_push/mixed_screen_N500_fp64_none.summary.csv
+timing_csv=/mnt/linuxdata/cuda_ik_accelerateion/standard_robot_cuda_ik_v4_cuda/data/results/final_push/mixed_screen_N500_fp64_none.timing.csv
+
+[elapsed_s] 1.416
+[returncode] 0

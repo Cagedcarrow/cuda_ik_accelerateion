@@ -1,0 +1,11 @@
+method,source,N,K,strict_sr,medium_sr,loose_sr,pos_p50_all_mm,pos_p95_all_mm,pos_p99_all_mm,pos_max_all_mm,pos_p95_suc_mm,rot_p95_all_deg,near_limit_ratio,joint_violation_count,gpu_stream_ms,e2e_ms,raw_throughput,valid_throughput_strict,notes
+A4 V3 Sobol-K16,historical_csv,1000,16.0,0.951,0.957,0.965,0.18,4.69,92.83,178.89,2.88,0.5316,0.093,0,,,,,V3 no limit barrier
+A6 V4 Limit K16,historical_csv,1000,16.0,0.95,0.953,0.963,0.19,5.03,100.79,154.22,2.63,0.4998,0.024,0,,,,,Limit barrier w=0.03
+A8 CUDA-V4-Final-K16,cuda_current,1000,16.0,0.954,0.955,0.965,0.181123836,4.50895888,96.6366175,169.785555,2.56037798,0.555012789,0.007,0,639.158346,639.158346,1564.55753,1492.58788,Current CUDA V4 baseline
+A9 cuRobo-Graph,rerun,1000,,0.84,0.861,0.895,0.0001260729569513,98.53029432352942,,438.66530255947663,,7.801870037169022,,0,15.65944938659668,15.68887100147549,63859.20573017882,53641.73281335021,System comparison; not equivalent seed/optimizer
+A0 Python/CUDA V1 DLS,not_rerun_current_plan,1000,,,,,,,,,,,,0,,,,,Not directly rerun in current CUDA runner; see historical project docs if needed
+A1 V2 Analytical Jacobian + DLS,not_rerun_current_plan,1000,,,,,,,,,,,,0,,,,,Not directly rerun in current CUDA runner; see historical project docs if needed
+A2 V3 Random-K16,not_rerun_current_plan,1000,,,,,,,,,,,,0,,,,,Not directly rerun in current CUDA runner; see historical project docs if needed
+A3 V3 Sobol-K8,not_rerun_current_plan,1000,,,,,,,,,,,,0,,,,,Not directly rerun in current CUDA runner; see historical project docs if needed
+A5 V4 without Limit,not_rerun_current_plan,1000,,,,,,,,,,,,0,,,,,Not directly rerun in current CUDA runner; see historical project docs if needed
+A7 V4 Limit + Smoothness Rerank,not_rerun_current_plan,1000,,,,,,,,,,,,0,,,,,Not directly rerun in current CUDA runner; see historical project docs if needed

@@ -1,0 +1,6 @@
+N,Method,Graph,kernel_launches,API_calls,GPU_active_ms
+100,CUDA-Mixed,--,1,5,1.24
+4000,CUDA-Mixed,--,1,5,25.44
+4000,cuRobo,Off,14108,28540,197.32
+5000,cuRobo,Off,5945,12014,28.16
+5000,cuRobo,On,2,12,4.73

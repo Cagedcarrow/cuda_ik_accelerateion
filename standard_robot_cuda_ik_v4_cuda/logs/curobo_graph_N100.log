@@ -1,0 +1,2 @@
+elapsed_s=3.122
+notes=collision disabled; zero external seed; cuRobo internal optimizer/graph/seeding not equivalent to V4 Sobol-K16

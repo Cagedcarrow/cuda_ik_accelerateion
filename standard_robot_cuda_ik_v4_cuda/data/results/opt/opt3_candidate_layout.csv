@@ -1,0 +1,2 @@
+variant,implemented,selection_kernel_speedup,total_gpu_stream_ms_speedup,quality_unchanged,notes
+aos_baseline,1,,1.0,1,SoA kernel not promoted; baseline selection is not dominant relative to LM kernel
