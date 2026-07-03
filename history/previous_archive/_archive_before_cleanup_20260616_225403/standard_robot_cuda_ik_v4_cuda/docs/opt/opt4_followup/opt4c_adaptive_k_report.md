@@ -1,0 +1,28 @@
+# OPT4C + Adaptive-K Report
+
+## Protocol
+
+- Fast candidate: `CUDA-V4-OPT4C-AK-4+4+8`
+- Stage 1: K=4, strict-success targets stop
+- Stage 2: next K=4 for failed targets
+- Stage 3: next K=8 for remaining failed targets
+- Each stage uses `opt4c_block_target`; final selection uses the same success_rank -> near_limit -> pose_cost rule
+
+## Results
+
+| method | N | K_max | avg_seeds | strict_sr | medium_sr | loose_sr | pos_p95_all_mm | pos_p95_suc_mm | rot_p95_all_deg | near_limit | gpu_stream_ms_mean | raw_throughput | valid_throughput_strict | speedup_vs_OPT4C_K16 | quality_drop_vs_OPT4C_K16 | pass_quality | pass_fast_mode | stage1_active_ratio | stage1_failed_ratio | stage2_active_ratio | stage2_failed_ratio | stage3_active_ratio | stage3_failed_ratio |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| CUDA-V4-Final-K16-OPT4C | 100 | 16 | 16.0 | 0.96 | 0.96 | 0.98 | 4.38451277 | 3.1743141 | 0.573046801 | 0.01 | 7.09497388 | 14094.4846 | 13530.7052 | 1.0 | 0.0 | 1 | 1 | nan | nan | nan | nan | nan | nan |
+| CUDA-V4-OPT4C-AK-4+4+8 | 100 | 16 | 5.199999999999999 | 0.96 | 0.96 | 0.98 | 4.794822656228 | 4.566035196575 | 0.8606200444447498 | 0.04 | 10.403897670000001 | 9611.78235041214 | 9227.311056395654 | 0.6819534471641915 | 0.0 | 1 | 0 | 1.0 | 0.16 | 0.16 | 0.07 | 0.07 | 0.04 |
+| CUDA-V4-Final-K16-OPT4C | 500 | 16 | 16.0 | 0.954 | 0.954 | 0.966 | 4.33796842 | 2.09849052 | 0.568232018 | 0.004 | 30.5672481 | 16357.377 | 15604.9376 | 1.0 | 0.0 | 1 | 1 | nan | nan | nan | nan | nan | nan |
+| CUDA-V4-OPT4C-AK-4+4+8 | 500 | 16 | 5.239999999999999 | 0.954 | 0.954 | 0.966 | 4.823028831318998 | 3.923661989513999 | 0.8601312995198486 | 0.02 | 36.34324796999999 | 13757.713686259729 | 13124.85885669178 | 0.8410708950733333 | 0.0 | 1 | 0 | 1.0 | 0.154 | 0.154 | 0.078 | 0.078 | 0.046 |
+| CUDA-V4-Final-K16-OPT4C | 1000 | 16 | 16.0 | 0.954 | 0.954 | 0.965 | 4.56313281 | 2.54634627 | 0.529917399 | 0.007 | 56.1285248 | 17816.253 | 16996.7054 | 1.0 | 0.0 | 1 | 1 | nan | nan | nan | nan | nan | nan |
+| CUDA-V4-OPT4C-AK-4+4+8 | 1000 | 16 | 5.191999999999999 | 0.954 | 0.954 | 0.965 | 4.8283794001909985 | 4.016664339863498 | 0.8641780462561997 | 0.027 | 67.80155827 | 14748.923557446728 | 14070.473073804178 | 0.8278353216674529 | 0.0 | 1 | 0 | 1.0 | 0.146 | 0.146 | 0.076 | 0.076 | 0.046 |
+| CUDA-V4-Final-K16-OPT4C | 5000 | 16 | 16.0 | 0.954 | 0.954 | 0.965 | 4.56313281 | 2.55241929 | 0.529917399 | 0.007 | 267.9697 | 18658.826 | 17800.52 | 1.0 | 0.0 | 1 | 1 | nan | nan | nan | nan | nan | nan |
+| CUDA-V4-OPT4C-AK-4+4+8 | 5000 | 16 | 5.191999999999999 | 0.954 | 0.954 | 0.965 | 4.828379400191006 | 4.03069685746 | 0.8641780462562014 | 0.027 | 314.37461970000004 | 15904.591804425487 | 15172.980581421914 | 0.8523897388908712 | 0.0 | 1 | 0 | 1.0 | 0.146 | 0.146 | 0.076 | 0.076 | 0.046 |
+
+## Gate
+
+N=1000 avg_seeds=5.191999999999999, Strict SR=0.954, pos_p95_all=4.8283794001909985 mm, near_limit=0.027, speedup_vs_OPT4C_K16=0.8278353216674529.
+
+Decision: Fast mode does not meet all gates; use appendix/future work.

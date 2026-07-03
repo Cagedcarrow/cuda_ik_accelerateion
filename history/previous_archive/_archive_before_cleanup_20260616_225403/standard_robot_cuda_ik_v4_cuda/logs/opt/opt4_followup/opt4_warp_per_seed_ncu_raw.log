@@ -1,0 +1,7 @@
+==PROF== Connected to process 702422 (/mnt/linuxdata/cuda_ik_accelerateion/standard_robot_cuda_ik_v4_cuda/build/standard_robot_cuda_v4_runner)
+ERROR: variant opt4_warp_per_seed is intentionally not implemented; use follow-up postmortem outputs for this failed branch
+==PROF== Disconnected from process 702422
+==ERROR== The application returned an error code (2).
+
+[elapsed_s] 0.940
+[returncode] 2

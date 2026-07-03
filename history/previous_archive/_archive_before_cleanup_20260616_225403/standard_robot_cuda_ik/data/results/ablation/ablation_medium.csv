@@ -1,0 +1,10 @@
+Level,N,Throughput_targets_per_s,GPU_time_ms,ConvRate,AvgIters,vs_Prev,Threshold,Repeat,SeedStrategy,Binary,Date
+B0,100,7589,13.18,0.830,31.36,,"Medium (10mm/5°)",30,zero_seed,A0,2026-06-12
+B0,500,9896,50.52,0.522,79.74,,"Medium (10mm/5°)",30,zero_seed,A0,2026-06-12
+B0,5000,12507,399.79,0.564,73.04,,"Medium (10mm/5°)",30,zero_seed,A0,2026-06-12
+B3,100,51361,1.95,1.000,12.85,+577%,Medium (10mm/5°),30,zero_seed,A5,2026-06-12
+B3,500,62384,8.01,1.000,13.78,+530%,Medium (10mm/5°),30,zero_seed,A5,2026-06-12
+B3,5000,66050,75.70,1.000,13.69,+428%,Medium (10mm/5°),30,zero_seed,A5,2026-06-12
+B5,100,113097,0.88,1.000,14.47,+120%,Medium (10mm/5°),30,zero_seed,A7,2026-06-12
+B5,500,155071,3.22,0.998,15.13,+149%,Medium (10mm/5°),30,zero_seed,A7,2026-06-12
+B5,5000,164207,30.45,0.9998,15.24,+149%,Medium (10mm/5°),30,zero_seed,A7,2026-06-12

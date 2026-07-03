@@ -1,0 +1,3 @@
+item,method,N1000_strict_sr,N1000_pos_p95_all_mm,N1000_near_limit,N1000_gpu_ms,status
+quality_mode,CUDA-V4-Final-K16-OPT4C,0.954,4.56313281,0.007,56.1285248,main_text
+fast_mode,CUDA-V4-OPT4C-AK-4+4+8,0.954,4.8283794001909985,0.027,67.80155827,appendix

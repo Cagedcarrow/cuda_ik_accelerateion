@@ -1,0 +1,8 @@
+step_id,step
+1,目标位姿批量输入
+2,Sobol-K16 种子生成
+3,OPT4C 并行 IK
+4,Limit Barrier
+5,块内 fused 选择
+6,轨迹平滑重排序
+7,关节解输出

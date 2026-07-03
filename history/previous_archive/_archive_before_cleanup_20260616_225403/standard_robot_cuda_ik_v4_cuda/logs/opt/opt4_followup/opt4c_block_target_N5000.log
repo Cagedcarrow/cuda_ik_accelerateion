@@ -1,0 +1,14 @@
+mode=v4_static
+variant=opt4c_block_target
+limit_gradient=analytic
+N=5000
+K=16
+repeat=30
+warmup=10
+gpu_stream_ms_mean=274.726237
+throughput_targets_per_s=18199.9363
+best_csv=/mnt/linuxdata/cuda_ik_accelerateion/standard_robot_cuda_ik_v4_cuda/data/results/opt/opt4_followup/opt4c_block_target_N5000.best.csv
+summary_csv=/mnt/linuxdata/cuda_ik_accelerateion/standard_robot_cuda_ik_v4_cuda/data/results/opt/opt4_followup/opt4c_block_target_N5000.csv
+
+[elapsed_s] 11.232
+[returncode] 0

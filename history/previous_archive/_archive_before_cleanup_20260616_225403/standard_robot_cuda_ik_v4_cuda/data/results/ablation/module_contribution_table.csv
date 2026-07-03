@@ -1,0 +1,4 @@
+transition,from_method,to_method,strict_sr_delta_pp,pos_p95_all_delta_mm,near_limit_delta_pp,speedup_x,main_interpretation
+V3 -> V4 Limit,A4 V3 Sobol-K16,A6 V4 Limit K16,-0.10000000000000009,0.33999999999999986,-6.9,,Limit barrier sharply reduces near-limit ratio with small SR/pos tradeoff
+Python V4 -> CUDA V4,Python V4,A8 CUDA-V4-Final-K16,,,,259.7,CUDA port gives large engineering speedup over Python prototype
+CUDA V4 -> cuRobo,A8 CUDA-V4,A9 cuRobo-Graph,-11.399999999999999,94.02133544352942,,40.816144184981695,cuRobo throughput is higher; V4 quality is stronger in this target set

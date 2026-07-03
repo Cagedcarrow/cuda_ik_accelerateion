@@ -1,0 +1,13 @@
+==PROF== Connected to process 623670 (/mnt/linuxdata/cuda_ik_accelerateion/standard_robot_cuda_ik_v4_cuda/build/standard_robot_cuda_v4_runner)
+==PROF== Profiling "ik_lm_multiseed_v4_kernel": 0%....50%....100% - 8 passes
+mode=v4_static
+N=100
+K=16
+repeat=1
+warmup=0
+gpu_stream_ms_mean=2474.73047
+throughput_targets_per_s=40.4084409
+best_csv=/tmp/v4_ncu_best.csv
+summary_csv=/tmp/v4_ncu_summary.csv
+==PROF== Disconnected from process 623670
+==PROF== Report: /mnt/linuxdata/cuda_ik_accelerateion/standard_robot_cuda_ik_v4_cuda/logs/nsight/v4_n100_basic.ncu-rep

@@ -1,0 +1,14 @@
+mode=v4_static
+variant=K8-only
+limit_gradient=analytic
+N=5000
+K=8
+repeat=30
+warmup=10
+gpu_stream_ms_mean=1495.13581
+throughput_targets_per_s=3344.17782
+best_csv=/mnt/linuxdata/cuda_ik_accelerateion/standard_robot_cuda_ik_v4_cuda/logs/adaptive/K8-only_N5000.best.csv
+summary_csv=/mnt/linuxdata/cuda_ik_accelerateion/standard_robot_cuda_ik_v4_cuda/logs/adaptive/K8-only_N5000.csv
+
+[elapsed_s] 59.971
+[returncode] 0

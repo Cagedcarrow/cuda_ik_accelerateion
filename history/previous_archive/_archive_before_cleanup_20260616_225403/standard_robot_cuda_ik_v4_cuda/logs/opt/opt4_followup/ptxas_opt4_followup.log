@@ -1,0 +1,50 @@
+[ 25%] Building CUDA object CMakeFiles/standard_robot_cuda_memory.dir/src/cuda/cuda_memory.cu.o
+[ 50%] Linking CUDA static library libstandard_robot_cuda_memory.a
+[ 50%] Built target standard_robot_cuda_memory
+[ 75%] Building CUDA object CMakeFiles/standard_robot_cuda_v4_runner_ptxas.dir/src/cuda/cuda_v4_runner.cu.o
+ptxas info    : 272 bytes gmem, 1384 bytes cmem[3], 16 bytes cmem[4]
+ptxas info    : Compiling entry function '_ZN4rtfg4cuda21jacobian_check_kernelEPKdPdi' for 'sm_75'
+ptxas info    : Function properties for _ZN4rtfg4cuda21jacobian_check_kernelEPKdPdi
+    336 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 66 registers, used 0 barriers, 336 bytes cumulative stack size, 372 bytes cmem[0], 32 bytes cmem[2]
+ptxas info    : Compile time = 15.695 ms
+ptxas info    : Function properties for __internal_trig_reduction_slowpathd
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Compiling entry function '_ZN4rtfg4cuda22fk_frames_check_kernelEPKdPdi' for 'sm_75'
+ptxas info    : Function properties for _ZN4rtfg4cuda22fk_frames_check_kernelEPKdPdi
+    336 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 66 registers, used 0 barriers, 336 bytes cumulative stack size, 372 bytes cmem[0], 32 bytes cmem[2]
+ptxas info    : Compile time = 15.644 ms
+ptxas info    : Function properties for __internal_trig_reduction_slowpathd
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Compiling entry function '_ZN4rtfg4cuda37ik_lm_multiseed_v4_warp_target_kernelEPKdS2_Pdiiii' for 'sm_75'
+ptxas info    : Function properties for _ZN4rtfg4cuda37ik_lm_multiseed_v4_warp_target_kernelEPKdS2_Pdiiii
+    768 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 193 registers, used 1 barriers, 768 bytes cumulative stack size, 392 bytes cmem[0], 136 bytes cmem[2]
+ptxas info    : Compile time = 100.299 ms
+ptxas info    : Function properties for __internal_trig_reduction_slowpathd
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Compiling entry function '_ZN4rtfg4cuda38ik_lm_multiseed_v4_block_target_kernelEPKdS2_Pdiiii' for 'sm_75'
+ptxas info    : Function properties for _ZN4rtfg4cuda38ik_lm_multiseed_v4_block_target_kernelEPKdS2_Pdiiii
+    768 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 194 registers, used 1 barriers, 768 bytes cumulative stack size, 2048 bytes smem, 392 bytes cmem[0], 136 bytes cmem[2]
+ptxas info    : Compile time = 100.230 ms
+ptxas info    : Function properties for __internal_trig_reduction_slowpathd
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Compiling entry function '_ZN4rtfg4cuda32select_best_per_target_v4_kernelEPKdPdii' for 'sm_75'
+ptxas info    : Function properties for _ZN4rtfg4cuda32select_best_per_target_v4_kernelEPKdPdii
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 38 registers, used 0 barriers, 376 bytes cmem[0]
+ptxas info    : Compile time = 6.171 ms
+ptxas info    : Compiling entry function '_ZN4rtfg4cuda25ik_lm_multiseed_v4_kernelEPKdS2_Pdiiii' for 'sm_75'
+ptxas info    : Function properties for _ZN4rtfg4cuda25ik_lm_multiseed_v4_kernelEPKdS2_Pdiiii
+    768 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+ptxas info    : Used 181 registers, used 0 barriers, 768 bytes cumulative stack size, 392 bytes cmem[0], 136 bytes cmem[2]
+ptxas info    : Compile time = 96.592 ms
+ptxas info    : Function properties for __internal_trig_reduction_slowpathd
+    0 bytes stack frame, 0 bytes spill stores, 0 bytes spill loads
+[100%] Linking CUDA executable standard_robot_cuda_v4_runner_ptxas
+[100%] Built target standard_robot_cuda_v4_runner_ptxas
+
+[elapsed_s] 3.095
+[returncode] 0

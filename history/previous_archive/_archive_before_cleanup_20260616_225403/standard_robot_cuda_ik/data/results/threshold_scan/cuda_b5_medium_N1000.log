@@ -1,0 +1,16 @@
+num_targets=1000
+repeat_count=30
+kernel_time_only_ms_mean=6.702738
+kernel_time_only_ms_p50=6.657136
+kernel_time_only_ms_p95=7.095290
+kernel_time_only_ms_p99=7.166937
+gpu_end_to_end_ms_mean=6.738014
+host_api_total_ms_mean=6.744108
+throughput_targets_per_s=148411.686504
+converged=998
+convergence_rate=0.998000
+avg_pos_error_m=0.004531410002
+avg_rot_error_rad=0.007696270403
+avg_iterations=15.882000
+weight_level=2
+ablation_level=7
