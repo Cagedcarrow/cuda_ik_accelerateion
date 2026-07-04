@@ -6,9 +6,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 CUDA-accelerated batch inverse kinematics (IK) solver for UR10 6-DOF manipulator, targeting SM 8.9 (Ada Lovelace) with CUDA 13.3.
 
-**Current method: OPT4C (CUDA-V4-Final-K16)** = Analytical Jacobian + Levenberg-Marquardt + Sobol-K16 seeds + Limit Barrier + Smoothness Rerank + target-block seed-parallel mapping + fused in-block candidate selection.
+**Current method: OPT4C** = Structure-aware single-kernel fusion: Analytical Jacobian + Levenberg-Marquardt + Sobol-K16 low-discrepancy multi-start + Limit Barrier + target-block thread mapping + fused in-block candidate selection.
 
-> **主线**: `standard_robot_cuda_ik/` 是唯一活跃项目。`history/` 目录下为历史版本归档，仅供参考，不作为开发依据。
+> **主线**: `standard_robot_cuda_ik/` 是唯一活跃项目。`history/` 为历史版本归档，仅供参考。
 
 ## Build
 
@@ -18,153 +18,152 @@ cmake -S . -B build -DCMAKE_BUILD_TYPE=Release
 cmake --build build -j$(nproc)
 ```
 
-**Target architecture**: `CMAKE_CUDA_ARCHITECTURES=89` (default; override with `-DCMAKE_CUDA_ARCHITECTURES=<arch>`).
+**Target**: `CMAKE_CUDA_ARCHITECTURES=89` (Ada Lovelace). Build outputs under `build/`:
 
-Build outputs (under `build/`):
-
-| Binary | Description |
-|--------|-------------|
-| `standard_robot_cuda_v4_runner` | Main OPT4C runner |
+| Binary | Purpose |
+|--------|---------|
+| `standard_robot_cuda_v4_runner` | Main OPT4C runner (all modes, all precision/fallback/graph variants) |
 | `standard_robot_cuda_v4_runner_r128` | Register-capped at 128 (occupancy experiment) |
 | `standard_robot_cuda_v4_runner_r160` | Register-capped at 160 |
 | `standard_robot_cuda_v4_runner_ptxas` | Verbose PTX assembly output |
 
 ## Solver Architecture
 
-**Algorithm**: Levenberg-Marquardt with analytical Jacobian. Single source file: `src/cuda/cuda_v4_runner.cu` (1150 lines).
+Single source file: `src/cuda/cuda_v4_runner.cu`. Key design features:
 
-### Key design features
+1. **Analytical Jacobian** via Fused FK: single forward pass outputs end-effector pose `T_ee`, joint world positions `p[6]`, and joint rotation axes `z[6]`. Jacobian columns = cross products: $J_{v,i}=z_i\times(p_{ee}-p_i)$, $J_{\omega,i}=z_i$. Replaces 12 FK evaluations/iteration → 1 FK + 6 cross products.
 
-1. **Analytical Jacobian**: FK outputs joint positions `p[18]` and z-axes `z[18]`, then Jacobian columns are computed via cross products: J_v = z_j × (p_ee − p_j), J_ω = z_j. This replaces 12 FK evaluations per iteration (6 columns × ±ε numerical differencing) with a single FK pass + 6 cross products.
+2. **Sobol K=16 multi-start**: 16 Sobol low-discrepancy seeds per target, each processed by one thread lane. Ablation experiment ($K=1$ vs $K=16$) proved this is the decisive factor for high success rate (SR drops from 0.954 → 0.522 when $K=1$).
 
-2. **Limit Barrier**: Quadratic penalty on joint-limit proximity (margin 0.087 rad). Supports both finite-difference and analytic gradient modes (`--limit-gradient finite_diff|analytic`).
+3. **Target-block mapping** (`--variant opt4c_block_target`): `<<<N, 32>>>` grid, 16 active lanes process K=16 seeds via shared memory (`s_cand[16][kCandidateStride]`, stride=16 column-major → zero bank conflicts). Lane 0 performs in-block best-selection. Kernel launch count = 1 (constant, independent of N and K).
 
-3. **Smoothness Rerank**: Candidate selection hierarchy: success rank (strict > medium > loose > fail) → limit proximity → pose cost → seed index.
+4. **Branch-free LM**: acceptance-rejection removed — trial solution always accepted, λ only scales. Eliminates warp divergence.
 
-4. **Block-per-target parallelism** (`--variant opt4c_block_target`): `<<<N, 32>>>` grid, each block's 16 lanes process K seeds via shared memory (`s_cand[16*kCandidateStride]`), with lane 0 performing in-block best-selection. This is the recommended variant.
+5. **Register-level 6×6 Gaussian elimination**: hand-rolled with partial pivoting, all intermediates in registers. No cuBLAS/cuSOLVER (library overhead > register latency for 6×6).
 
-5. **FP32 fallback** (`--fallback-mode strict_fail_to_fp64`): If mixed precision produces non-strict result, the block automatically retries with full FP64 precision.
+6. **Limit Barrier**: quadratic penalty, margin 0.087 rad (≈5°), analytic gradient.
 
-6. **CUDA Graph support** (`--graph-mode capture_replay`): Captures H2D → kernel → D2H as a graph for reduced launch overhead.
+7. **Precision modes**: `fp64` | `mixed_safe` (FP32 J/H) | `mixed_mid` | `mixed_aggressive` | `fp32_risky`. Mixed precision experiment showed only +2% throughput (bottleneck is FP64 linear solve, not Jacobian assembly).
 
-### Launch variants
+8. **Fallback**: `strict_fail_to_fp64` — auto-retry in FP64 if mixed precision fails Strict threshold.
 
-| Variant | Kernel | Grid | Notes |
-|---------|--------|------|-------|
-| `baseline` | `ik_lm_multiseed_v4_kernel` + `select_best_per_target_v4_kernel` | N×K + N×1 | Two-launch, uses global memory for candidates |
-| `opt4c_block_target` | `ik_lm_multiseed_v4_block_target_kernel` | N×1 (32 threads) | Single launch, shared memory selection, supports fallback + Graph |
-| `opt4b_warp_target` | `ik_lm_multiseed_v4_warp_target_kernel` | (N/4)×1 (128 threads) | 4 warps/block, 4 targets per block |
+### CLI flags
 
-### Key source files
+```
+--mode v4_static | fk_check | jacobian_check
+--variant baseline | opt4c_block_target | opt4b_warp_target
+--precision-mode fp64 | mixed_safe | mixed_mid | mixed_aggressive | fp32_risky
+--fallback-mode none | strict_fail_to_fp64
+--limit-gradient finite_diff | analytic
+--graph-mode off | capture_replay
+--N <targets> --K <seeds_per_target>
+--max-iter 60 --repeat 30 --warmup 10
+--targets <raw> --seeds <raw>
+--best-csv <csv> --summary-csv <csv> --timing-csv <csv>
+```
+
+## Key Source Files
 
 | File | Purpose |
 |------|---------|
-| `src/cuda/cuda_v4_runner.cu` | All kernels + main(): LM solver, candidate selection, FK/jacobian check, full CLI |
-| `src/cuda/cuda_utilities.cuh` | Device helpers (FK, Rodrigues, pose_error, LDLT, PaddedMat6x8), `__constant__` variable declarations, CUDA_CHECK macros |
-| `include/standard_robot_cuda_ik/generated/ur10_model_constants.h` | Auto-generated from URDF: segment origins, axes, joint limits, weight schedule, lambda params |
-
-### Data flow
-
-All benchmark I/O uses raw binary files of double-precision floats:
-- Targets: `[N, 16]` row-major 4×4 transform matrices
-- Seeds: `[N*K, 6]` joint angles
-- Output: CSV files (best per target, candidates, summary statistics, per-repeat timing)
-
-Each candidate solution is `kCandidateStride=16` doubles, each best result is `kBestStride=18` doubles. See `solve_candidate_v4()` and `write_best_from_candidate_v4()` for field layout.
-
-## Running Benchmarks
-
-### OPT4C runner
-
-```bash
-./build/standard_robot_cuda_v4_runner \
-  --mode v4_static \
-  --variant opt4c_block_target \
-  --limit-gradient analytic \
-  --graph-mode off \
-  --precision-mode mixed_safe \
-  --fallback-mode none \
-  --targets data/cuda_inputs/targets_N1000_T4x4_f64.raw \
-  --seeds data/cuda_inputs/seeds_N1000_K16_q_f64.raw \
-  --N 1000 --K 16 \
-  --max-iter 60 --repeat 30 --warmup 10 \
-  --best-csv data/results/latest/cuda_opt4c_best_N1000.csv \
-  --summary-csv data/results/latest/cuda_opt4c_summary_N1000.csv \
-  --timing-csv data/results/latest/cuda_opt4c_timing_N1000.csv
-```
-
-Key flags:
-- `--variant`: `baseline` | `opt4c_block_target` (recommended) | `opt4b_warp_target`
-- `--limit-gradient`: `finite_diff` | `analytic` (faster)
-- `--precision-mode`: `fp64` | `mixed_safe` (FP32 J+H only) | `mixed_mid` | `mixed_aggressive` (FP32 q snap) | `fp32_risky`
-- `--fallback-mode`: `none` | `strict_fail_to_fp64`
-- `--graph-mode`: `off` | `capture_replay`
-
-### FK / Jacobian verification
-
-```bash
-./build/standard_robot_cuda_v4_runner \
-  --mode fk_check --seeds <q.raw> --best-csv fk_check.csv
-./build/standard_robot_cuda_v4_runner \
-  --mode jacobian_check --seeds <q.raw> --best-csv jacobian_check.csv
-```
+| `src/cuda/cuda_v4_runner.cu` | All kernels + main(): LM solver, candidate selection, FK/Jacobian check, full CLI |
+| `src/cuda/cuda_utilities.cuh` | Device helpers (FK, Rodrigues, pose_error, LDLT), `__constant__` declarations, CUDA_CHECK |
+| `include/standard_robot_cuda_ik/generated/ur10_model_constants.h` | Auto-generated from URDF: segment origins, axes, joint limits |
 
 ## Data
 
-- `data/cuda_inputs/`: Raw double binary files — targets `[N,16]`, seeds `[N*K,6]`, q_samples
-- `data/results/latest/`: Latest OPT4C benchmark output CSVs
-- `urdf/ur10_official.urdf`: Canonical UR10 model; `ur10_official_source.json` records provenance
-
-## Python Scripts
-
-### Benchmark orchestration
-- `scripts/run_final_push.py` — Generates all OPT4C results CSVs, figures, and paper-ready output
-- `scripts/run_opt4c_finalization.py` — OPT4C finalization: static/timing benchmarks, FK checks, cuRobo comparison
-- `scripts/run_opt4_followup.py` — OPT4 followup: block-target, warp-target, FP32 fallback, CUDA Graph sweeps
-- `scripts/run_v4_enhancement_plan.py` — Register-cap experiments via `_r128`/`_r160` variants
-
-### Cross-solver comparison
-- `scripts/run_v4_curobo_compare.py` — cuRobo comparison harness (uses cuRobo Python API)
-- `scripts/audit_curobo_quality_round2.py` — cuRobo quality audit (consumes OPT4C runner output CSVs)
-- `scripts/audit_ur10_model_consistency.py` — UR10 FK/Jacobian/limit barrier verification
-
-### V4 CUDA port acceptance
-- `scripts/run_v4_cuda_plan.py` — V4-Final-K16 FP64 correctness + benchmark reporting
-
-### UR10 model tools
-- `tools/robot_model.py` — UR10 FK model in Python (reference implementation, used by comparison scripts)
-- `tools/fetch_official_ur10.py` — Fetch/clone official UR10 URDF from UniversalRobots repo
-- `tools/verify_official_ur10.py` — FK verification against official model using yourdfpy
+```
+data/
+├── cuda_inputs/             # Original target/seed raw files (N=100/500/1000/5000)
+├── results/latest/          # Initial round benchmark output CSVs
+└── experiments/             # Complete experiment data for paper
+    ├── README.md            # Data-to-paper mapping (table X ← CSV file)
+    ├── inputs/              # Dense N=100-1000 targets + seeds (K=16)
+    ├── results/             # Main benchmark CSVs (10 N values)
+    └── 补充实验/
+        ├── inputs/          # K=1 seed files
+        ├── results/         # K=1, cuRobo K=16, FP32 mixed precision CSVs
+        └── *.py             # Benchmark scripts (see README.md)
+```
 
 ## Paper
 
-论文源文件位于 `论文/`：
-- `paper.tex` — LaTeX 源文件（xelatex 编译）
-- `paper.pdf` — 编译后 PDF
-- `paper.md` — Markdown 格式（含嵌入图片）
-- `基于 CUDA 小矩阵加速的机械臂批量逆运动学求解.pdf` — 最终输出 PDF
-- `绘图/` — 全部 7 张图片（PDF + SVG + draw.io 源文件）
-- `计划/` — 审稿意见
+**Final version**: `论文/paper.tex` → `论文/paper.pdf` (10 pages, xelatex).
 
-编译：`cd 论文 && latexmk -xelatex paper.tex`（或使用 `.latexmkrc` 自动配置）。
+```
+论文/
+├── paper.tex           # Final LaTeX source
+├── paper.pdf           # Compiled PDF (10 pages)
+├── paper.txt           # Plain text for plagiarism check
+├── .latexmkrc          # Force xelatex
+├── 绘图/               # 6 figures (PDF + SVG + draw.io sources)
+├── 格式模板/           # Journal formatting reference
+├── 计划/               # Reviewer comments + revision strategy
+└── 名词解释/           # 47 technical terms glossary (CUDA/Robotics/Numerical)
+```
 
-## External Reference Solvers
+Compile: `cd 论文 && latexmk -xelatex paper.tex`
 
-Cloned under `external/` for source-code reading only (not built or run):
-- `external/curobo/` — NVIDIA cuRobo (FP32 particle-search GPU IK)
-- `external/hjcd_ik/` — HJCD-IK
-- `external/pyroki/` — PyRoki (JAX-based GPU IK)
+### Paper key findings (all supported by experiment data in `data/experiments/`)
+
+| Experiment | Key Result | Paper Location |
+|-----------|-----------|---------------|
+| OPT4C K=16 (main) | SR 0.940-0.960, throughput 15k-18k, p95 4.3-5.5mm | Table 5, §4.1 |
+| K=1 ablation | SR collapses to 0.45-0.52, p95 surges to 642-685mm | Table 7, §4.3 |
+| cuRobo K=16 fair comparison | SR 0.988 (quality ceiling), but throughput only 10k | Table 6, §4.2 |
+| cuRobo K=1 (default) | Throughput 72k but SR only 0.84 | Table 6, §4.2 |
+| FP32 mixed precision | Only +2% throughput, bottleneck is FP64 linear solve | Table 8, §4.4 |
+| Nsight Compute | Long Scoreboard 83.2%, Issue Slot 2.32% | Table 9, §4.4 |
+| PTX analysis | 194 registers/thread, ~44% occupancy, zero bank conflicts | Table 10, §4.4 |
+
+### Paper narrative
+
+Core contribution is **hardware-fused multi-start paradigm**, not optimizer superiority. Three-way Pareto frontier: cuRobo K=16 (quality ceiling, SR 0.988) → OPT4C K=16 (throughput拐点, SR 0.954, 1.75× faster) → cuRobo K=1 (extreme throughput, SR 0.840, quality unacceptable). All 15 references are cited in text.
+
+## Python Scripts
+
+### Benchmark orchestration (in `scripts/`)
+- `run_final_push.py` — Figure generation + benchmark orchestration
+- `run_v4_curobo_compare.py` — cuRobo comparison harness
+- `audit_curobo_quality_round2.py` — cuRobo quality audit (multi-seed/optimizer sweeps)
+- `audit_ur10_model_consistency.py` — UR10 FK/Jacobian/limit barrier verification
+
+### Experiment scripts (in `data/experiments/补充实验/`)
+- `run_dense_benchmarks.py` — OPT4C K=16 N=100-1000 benchmark
+- `run_k1_benchmark.py` — K=1 ablation + comparison vs cuRobo
+- `run_curobo_k16.py` — cuRobo K=16 fair comparison + three-way analysis
+- `run_mixed_precision.py` — FP32 mixed precision ablation
+- `generate_dense_inputs.py` — Slice N=200-900 targets/seeds from N=1000 base
+
+### UR10 tools
+- `tools/robot_model.py` — Python FK reference implementation
+- `tools/verify_official_ur10.py` — Cross-check FK against yourdfpy
 
 ## Key Design Decisions
 
-1. **Analytical Jacobian over numerical**: The single largest throughput gain. Replaces 12 FK evaluations/iteration with 1 FK + 6 cross products.
-2. **Double precision required**: IK convergence cannot tolerate FP32 accumulation in FK chains. Mixed precision (`mixed_safe`) is the compromise — FP32 for FK/Jacobian/Hessian, FP64 for linear solve and damping.
-3. **Block-per-target over grid N×K**: `opt4c_block_target` uses `<<<N, 32>>>` with 16 seeds in shared memory, avoiding N×K grid launch overhead. K is fixed at 16.
-4. **No cuBLAS/cuSOLVER**: 6×6 linear systems are too small for library overhead. Hand-rolled Gaussian elimination with partial pivoting in registers.
-5. **Sobol K=16 seeds**: Low-discrepancy sequences provide better IK coverage than random/grid sampling with fewer seeds.
+1. **Sobol K=16 multi-start is the decisive success factor**: Ablation proved LM optimizer alone (K=1) achieves only 45-52% SR. The 0.954 SR comes from 16 independent Sobol starting points — not from optimizer superiority.
+
+2. **Kernel Fusion over multi-kernel pipelines**: Launch count = 1 regardless of N and K. cuRobo's multi-stage pipeline (particle init → evaluate → L-BFGS update) incurs fixed scheduling cost that dominates at N≤1000.
+
+3. **FP64 linear solve is the bottleneck**: FP32 Jacobian/Hessian gives only +2% throughput. The 6×6 Gaussian elimination dominates iteration time — algorithm-level acceleration (warm-start, fewer iterations) is more promising than precision-level.
+
+4. **No cuBLAS/cuSOLVER**: 6×6 systems are too small for library overhead. Hand-rolled Gaussian elimination in registers.
+
+5. **Double precision required for convergence**: IK cannot tolerate FP32 accumulation in FK chains. Mixed precision (`mixed_safe`) preserves FP64 for linear solve and convergence check.
+
+## Profiling
+
+Nsight Compute was run on the main kernel (N=1000, K=16):
+- Warp Stall Long Scoreboard: 83.2% → FP64 pipeline latency is the dominant bottleneck
+- Issue Slot Utilization: 2.32% → extreme idle, consistent with compute-bound + heavily stalled
+- Shared memory bank conflicts: ~112k (conflict rate <0.1%) → kCandidateStride=16 layout validated
+- Compute (SM) Throughput: 84.2% → when active, compute-heavy
+- Memory Throughput: 3.71% → not memory-bound
+
+PTX static analysis: 194 registers/thread, ~44% theoretical occupancy, zero spill at default.
 
 ## Historical Code (仅供参考)
 
 所有历史版本（DLS A0-A8 消融、V2 解析雅可比实验、V3 Python LM 原型、V4 Python 原型、pre-OPT4C CUDA 移植）已归档至 `history/`。详见 `history/README.md`。
 
-> ⚠️ **历史代码不作为开发依据。** 当前活跃开发仅针对 `standard_robot_cuda_ik/` 中的 OPT4C 求解器。历史代码中的实验数据（A0-A8 CSVs、旧 NCU 报告）使用不同的算法（数值 Jacobian DLS）和评价协议，不可直接与当前 OPT4C 结果混用。
+> ⚠️ 历史代码不作为开发依据。当前活跃开发仅针对 `standard_robot_cuda_ik/` 中的 OPT4C 求解器。

@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="utf-8" standalone="no"?>
 <!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
   "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
-<svg xmlns:xlink="http://www.w3.org/1999/xlink" width="409.488pt" height="325.881094pt" viewBox="0 0 409.488 325.881094" xmlns="http://www.w3.org/2000/svg" version="1.1">
+<svg xmlns:xlink="http://www.w3.org/1999/xlink" width="409.488pt" height="312.12pt" viewBox="0 0 409.488 312.12" xmlns="http://www.w3.org/2000/svg" version="1.1">
  <metadata>
   <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
    <cc:Work>
     <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
-    <dc:date>2026-07-04T00:38:35.903505</dc:date>
+    <dc:date>2026-07-04T11:26:03.358068</dc:date>
     <dc:format>image/svg+xml</dc:format>
     <dc:creator>
      <cc:Agent>
@@ -21,8 +21,8 @@
  </defs>
  <g id="figure_1">
   <g id="patch_1">
-   <path d="M 0 325.881094 
-L 409.488 325.881094 
+   <path d="M 0 312.12 
+L 409.488 312.12 
 L 409.488 0 
 L 0 0 
 z
@@ -30,159 +30,159 @@ z
   </g>
   <g id="axes_1">
    <g id="patch_2">
-    <path d="M 140.31 36.091894 
-L 257.49 36.091894 
-Q 259.8336 36.091894 259.8336 34.785094 
-L 259.8336 21.717094 
-Q 259.8336 20.410294 257.49 20.410294 
-L 140.31 20.410294 
-Q 137.9664 20.410294 137.9664 21.717094 
-L 137.9664 34.785094 
-Q 137.9664 36.091894 140.31 36.091894 
+    <path d="M 140.31 22.3308 
+L 257.49 22.3308 
+Q 259.8336 22.3308 259.8336 21.024 
+L 259.8336 7.956 
+Q 259.8336 6.6492 257.49 6.6492 
+L 140.31 6.6492 
+Q 137.9664 6.6492 137.9664 7.956 
+L 137.9664 21.024 
+Q 137.9664 22.3308 140.31 22.3308 
 z
-" clip-path="url(#p7e84cebd39)" style="fill: #009e73; opacity: 0.9; stroke: #333333; stroke-width: 0.8; stroke-linejoin: miter"/>
+" clip-path="url(#p3a2e729286)" style="fill: #009e73; opacity: 0.9; stroke: #333333; stroke-width: 0.8; stroke-linejoin: miter"/>
    </g>
    <g id="patch_3">
-    <path d="M 130.545 62.227894 
-L 267.255 62.227894 
-Q 269.5986 62.227894 269.5986 60.921094 
-L 269.5986 47.853094 
-Q 269.5986 46.546294 267.255 46.546294 
-L 130.545 46.546294 
-Q 128.2014 46.546294 128.2014 47.853094 
-L 128.2014 60.921094 
-Q 128.2014 62.227894 130.545 62.227894 
+    <path d="M 130.545 48.4668 
+L 267.255 48.4668 
+Q 269.5986 48.4668 269.5986 47.16 
+L 269.5986 34.092 
+Q 269.5986 32.7852 267.255 32.7852 
+L 130.545 32.7852 
+Q 128.2014 32.7852 128.2014 34.092 
+L 128.2014 47.16 
+Q 128.2014 48.4668 130.545 48.4668 
 z
-" clip-path="url(#p7e84cebd39)" style="fill: #0072b2; opacity: 0.9; stroke: #333333; stroke-width: 0.8; stroke-linejoin: miter"/>
+" clip-path="url(#p3a2e729286)" style="fill: #0072b2; opacity: 0.9; stroke: #333333; stroke-width: 0.8; stroke-linejoin: miter"/>
    </g>
    <g id="patch_4">
-    <path d="M 120.78 91.630894 
-L 277.02 91.630894 
-Q 279.3636 91.630894 279.3636 90.324094 
-L 279.3636 75.078094 
-Q 279.3636 73.771294 277.02 73.771294 
-L 120.78 73.771294 
-Q 118.4364 73.771294 118.4364 75.078094 
-L 118.4364 90.324094 
-Q 118.4364 91.630894 120.78 91.630894 
+    <path d="M 120.78 77.8698 
+L 277.02 77.8698 
+Q 279.3636 77.8698 279.3636 76.563 
+L 279.3636 61.317 
+Q 279.3636 60.0102 277.02 60.0102 
+L 120.78 60.0102 
+Q 118.4364 60.0102 118.4364 61.317 
+L 118.4364 76.563 
+Q 118.4364 77.8698 120.78 77.8698 
 z
-" clip-path="url(#p7e84cebd39)" style="fill: #56b4e9; opacity: 0.9; stroke: #333333; stroke-width: 0.8; stroke-linejoin: miter"/>
+" clip-path="url(#p3a2e729286)" style="fill: #56b4e9; opacity: 0.9; stroke: #333333; stroke-width: 0.8; stroke-linejoin: miter"/>
    </g>
    <g id="patch_5">
-    <path d="M 111.015 119.944894 
-L 286.785 119.944894 
-Q 289.1286 119.944894 289.1286 118.638094 
-L 289.1286 103.392094 
-Q 289.1286 102.085294 286.785 102.085294 
-L 111.015 102.085294 
-Q 108.6714 102.085294 108.6714 103.392094 
-L 108.6714 118.638094 
-Q 108.6714 119.944894 111.015 119.944894 
+    <path d="M 111.015 106.1838 
+L 286.785 106.1838 
+Q 289.1286 106.1838 289.1286 104.877 
+L 289.1286 89.631 
+Q 289.1286 88.3242 286.785 88.3242 
+L 111.015 88.3242 
+Q 108.6714 88.3242 108.6714 89.631 
+L 108.6714 104.877 
+Q 108.6714 106.1838 111.015 106.1838 
 z
-" clip-path="url(#p7e84cebd39)" style="fill: #0072b2; opacity: 0.9; stroke: #333333; stroke-width: 0.8; stroke-linejoin: miter"/>
+" clip-path="url(#p3a2e729286)" style="fill: #0072b2; opacity: 0.9; stroke: #333333; stroke-width: 0.8; stroke-linejoin: miter"/>
    </g>
    <g id="patch_6">
-    <path d="M 21.177 160.237894 
-L 157.887 160.237894 
-Q 160.2306 160.237894 160.2306 158.931094 
-L 160.2306 132.795094 
-Q 160.2306 131.488294 157.887 131.488294 
-L 21.177 131.488294 
-Q 18.8334 131.488294 18.8334 132.795094 
-L 18.8334 158.931094 
-Q 18.8334 160.237894 21.177 160.237894 
+    <path d="M 21.177 146.4768 
+L 157.887 146.4768 
+Q 160.2306 146.4768 160.2306 145.17 
+L 160.2306 119.034 
+Q 160.2306 117.7272 157.887 117.7272 
+L 21.177 117.7272 
+Q 18.8334 117.7272 18.8334 119.034 
+L 18.8334 145.17 
+Q 18.8334 146.4768 21.177 146.4768 
 z
-" clip-path="url(#p7e84cebd39)" style="fill: #0072b2; opacity: 0.9; stroke: #333333; stroke-width: 0.8; stroke-linejoin: miter"/>
+" clip-path="url(#p3a2e729286)" style="fill: #0072b2; opacity: 0.9; stroke: #333333; stroke-width: 0.8; stroke-linejoin: miter"/>
    </g>
    <g id="patch_7">
-    <path d="M 239.913 160.237894 
-L 376.623 160.237894 
-Q 378.9666 160.237894 378.9666 158.931094 
-L 378.9666 132.795094 
-Q 378.9666 131.488294 376.623 131.488294 
-L 239.913 131.488294 
-Q 237.5694 131.488294 237.5694 132.795094 
-L 237.5694 158.931094 
-Q 237.5694 160.237894 239.913 160.237894 
+    <path d="M 239.913 146.4768 
+L 376.623 146.4768 
+Q 378.9666 146.4768 378.9666 145.17 
+L 378.9666 119.034 
+Q 378.9666 117.7272 376.623 117.7272 
+L 239.913 117.7272 
+Q 237.5694 117.7272 237.5694 119.034 
+L 237.5694 145.17 
+Q 237.5694 146.4768 239.913 146.4768 
 z
-" clip-path="url(#p7e84cebd39)" style="fill: #0072b2; opacity: 0.9; stroke: #333333; stroke-width: 0.8; stroke-linejoin: miter"/>
+" clip-path="url(#p3a2e729286)" style="fill: #0072b2; opacity: 0.9; stroke: #333333; stroke-width: 0.8; stroke-linejoin: miter"/>
    </g>
    <g id="patch_8">
-    <path d="M 198.9 178.533094 
-L 286.785 185.067094 
-L 198.9 191.601094 
-L 111.015 185.067094 
+    <path d="M 198.9 164.772 
+L 286.785 171.306 
+L 198.9 177.84 
+L 111.015 171.306 
 z
-" clip-path="url(#p7e84cebd39)" style="fill: #e69f00; opacity: 0.9; stroke: #333333; stroke-width: 0.8; stroke-linejoin: miter"/>
+" clip-path="url(#p3a2e729286)" style="fill: #e69f00; opacity: 0.9; stroke: #333333; stroke-width: 0.8; stroke-linejoin: miter"/>
    </g>
    <g id="patch_9">
-    <path d="M 355.14 191.818894 
-L 394.2 191.818894 
-Q 396.5436 191.818894 396.5436 190.512094 
-L 396.5436 179.622094 
-Q 396.5436 178.315294 394.2 178.315294 
-L 355.14 178.315294 
-Q 352.7964 178.315294 352.7964 179.622094 
-L 352.7964 190.512094 
-Q 352.7964 191.818894 355.14 191.818894 
+    <path d="M 355.14 178.0578 
+L 394.2 178.0578 
+Q 396.5436 178.0578 396.5436 176.751 
+L 396.5436 165.861 
+Q 396.5436 164.5542 394.2 164.5542 
+L 355.14 164.5542 
+Q 352.7964 164.5542 352.7964 165.861 
+L 352.7964 176.751 
+Q 352.7964 178.0578 355.14 178.0578 
 z
-" clip-path="url(#p7e84cebd39)" style="fill: #cccccc; opacity: 0.9; stroke: #333333; stroke-width: 0.8; stroke-linejoin: miter"/>
+" clip-path="url(#p3a2e729286)" style="fill: #cccccc; opacity: 0.9; stroke: #333333; stroke-width: 0.8; stroke-linejoin: miter"/>
    </g>
    <g id="patch_10">
-    <path d="M 111.015 232.111894 
-L 286.785 232.111894 
-Q 289.1286 232.111894 289.1286 230.805094 
-L 289.1286 217.737094 
-Q 289.1286 216.430294 286.785 216.430294 
-L 111.015 216.430294 
-Q 108.6714 216.430294 108.6714 217.737094 
-L 108.6714 230.805094 
-Q 108.6714 232.111894 111.015 232.111894 
+    <path d="M 111.015 218.3508 
+L 286.785 218.3508 
+Q 289.1286 218.3508 289.1286 217.044 
+L 289.1286 203.976 
+Q 289.1286 202.6692 286.785 202.6692 
+L 111.015 202.6692 
+Q 108.6714 202.6692 108.6714 203.976 
+L 108.6714 217.044 
+Q 108.6714 218.3508 111.015 218.3508 
 z
-" clip-path="url(#p7e84cebd39)" style="fill: #56b4e9; opacity: 0.9; stroke: #333333; stroke-width: 0.8; stroke-linejoin: miter"/>
+" clip-path="url(#p3a2e729286)" style="fill: #56b4e9; opacity: 0.9; stroke: #333333; stroke-width: 0.8; stroke-linejoin: miter"/>
    </g>
    <g id="patch_11">
-    <path d="M 111.015 262.603894 
-L 286.785 262.603894 
-Q 289.1286 262.603894 289.1286 261.297094 
-L 289.1286 243.873094 
-Q 289.1286 242.566294 286.785 242.566294 
-L 111.015 242.566294 
-Q 108.6714 242.566294 108.6714 243.873094 
-L 108.6714 261.297094 
-Q 108.6714 262.603894 111.015 262.603894 
+    <path d="M 111.015 248.8428 
+L 286.785 248.8428 
+Q 289.1286 248.8428 289.1286 247.536 
+L 289.1286 230.112 
+Q 289.1286 228.8052 286.785 228.8052 
+L 111.015 228.8052 
+Q 108.6714 228.8052 108.6714 230.112 
+L 108.6714 247.536 
+Q 108.6714 248.8428 111.015 248.8428 
 z
-" clip-path="url(#p7e84cebd39)" style="fill: #0072b2; opacity: 0.9; stroke: #333333; stroke-width: 0.8; stroke-linejoin: miter"/>
+" clip-path="url(#p3a2e729286)" style="fill: #0072b2; opacity: 0.9; stroke: #333333; stroke-width: 0.8; stroke-linejoin: miter"/>
    </g>
    <g id="patch_12">
-    <path d="M 120.78 290.917894 
-L 277.02 290.917894 
-Q 279.3636 290.917894 279.3636 289.611094 
-L 279.3636 276.543094 
-Q 279.3636 275.236294 277.02 275.236294 
-L 120.78 275.236294 
-Q 118.4364 275.236294 118.4364 276.543094 
-L 118.4364 289.611094 
-Q 118.4364 290.917894 120.78 290.917894 
+    <path d="M 120.78 277.1568 
+L 277.02 277.1568 
+Q 279.3636 277.1568 279.3636 275.85 
+L 279.3636 262.782 
+Q 279.3636 261.4752 277.02 261.4752 
+L 120.78 261.4752 
+Q 118.4364 261.4752 118.4364 262.782 
+L 118.4364 275.85 
+Q 118.4364 277.1568 120.78 277.1568 
 z
-" clip-path="url(#p7e84cebd39)" style="fill: #56b4e9; opacity: 0.9; stroke: #333333; stroke-width: 0.8; stroke-linejoin: miter"/>
+" clip-path="url(#p3a2e729286)" style="fill: #56b4e9; opacity: 0.9; stroke: #333333; stroke-width: 0.8; stroke-linejoin: miter"/>
    </g>
    <g id="patch_13">
-    <path d="M 111.015 321.409894 
-L 286.785 321.409894 
-Q 289.1286 321.409894 289.1286 320.103094 
-L 289.1286 307.035094 
-Q 289.1286 305.728294 286.785 305.728294 
-L 111.015 305.728294 
-Q 108.6714 305.728294 108.6714 307.035094 
-L 108.6714 320.103094 
-Q 108.6714 321.409894 111.015 321.409894 
+    <path d="M 111.015 307.6488 
+L 286.785 307.6488 
+Q 289.1286 307.6488 289.1286 306.342 
+L 289.1286 293.274 
+Q 289.1286 291.9672 286.785 291.9672 
+L 111.015 291.9672 
+Q 108.6714 291.9672 108.6714 293.274 
+L 108.6714 306.342 
+Q 108.6714 307.6488 111.015 307.6488 
 z
-" clip-path="url(#p7e84cebd39)" style="fill: #d55e00; opacity: 0.9; stroke: #333333; stroke-width: 0.8; stroke-linejoin: miter"/>
+" clip-path="url(#p3a2e729286)" style="fill: #d55e00; opacity: 0.9; stroke: #333333; stroke-width: 0.8; stroke-linejoin: miter"/>
    </g>
    <g id="text_1">
     <!-- 输入: N个目标位姿 T*, K=16 Sobol种子 -->
-    <g style="fill: #ffffff" transform="translate(135.903281 30.965234) scale(0.07 -0.07)">
+    <g style="fill: #ffffff" transform="translate(135.903281 17.204141) scale(0.07 -0.07)">
      <defs>
       <path id="UKaiCN-8f93" d="M 3844 4269 
 Q 4294 3725 4788 3225 
@@ -1201,7 +1201,7 @@ z
    </g>
    <g id="text_2">
     <!-- CUDA Grid Launch: N blocks, 32 threads/block -->
-    <g style="fill: #ffffff" transform="translate(121.9 57.039437) scale(0.07 -0.07)">
+    <g style="fill: #ffffff" transform="translate(121.9 43.278344) scale(0.07 -0.07)">
      <defs>
       <path id="UKaiCN-43" d="M 1931 413 
 Q 1125 413 650 969 
@@ -1787,17 +1787,17 @@ z
     </g>
    </g>
    <g id="patch_14">
-    <path d="M 198.9 62.923088 
-Q 198.9 66.366756 198.9 68.468784 
+    <path d="M 198.9 49.161995 
+Q 198.9 52.605663 198.9 54.70769 
 " style="fill: none; stroke: #555555; stroke-width: 1.2; stroke-linecap: round"/>
-    <path d="M 200.1 66.068784 
-L 198.9 68.468784 
-L 197.7 66.068784 
+    <path d="M 200.1 52.30769 
+L 198.9 54.70769 
+L 197.7 52.30769 
 " style="fill: none; stroke: #555555; stroke-width: 1.2; stroke-linecap: round"/>
    </g>
    <g id="text_3">
     <!-- Block i: 加载 T*_i 和 seed[0..15] 到寄存器 -->
-    <g style="fill: #ffffff" transform="translate(125.4 85.360547) scale(0.07 -0.07)">
+    <g style="fill: #ffffff" transform="translate(125.4 71.599453) scale(0.07 -0.07)">
      <defs>
       <path id="UKaiCN-42" d="M 563 975 
 L 563 3838 
@@ -2643,17 +2643,17 @@ z
     </g>
    </g>
    <g id="patch_15">
-    <path d="M 198.9 93.416684 
-Q 198.9 95.770196 198.9 96.782067 
+    <path d="M 198.9 79.65559 
+Q 198.9 82.009102 198.9 83.020973 
 " style="fill: none; stroke: #555555; stroke-width: 1.2; stroke-linecap: round"/>
-    <path d="M 200.1 94.382067 
-L 198.9 96.782067 
-L 197.7 94.382067 
+    <path d="M 200.1 80.620973 
+L 198.9 83.020973 
+L 197.7 80.620973 
 " style="fill: none; stroke: #555555; stroke-width: 1.2; stroke-linecap: round"/>
    </g>
    <g id="text_4">
-    <!-- 16 lanes 并行: 每个 lane 执行 LM 迭代求解 -->
-    <g style="fill: #ffffff" transform="translate(127.153281 113.766422) scale(0.07 -0.07)">
+    <!-- 16 lanes 并行: 每个lane执行LM迭代求解 -->
+    <g style="fill: #ffffff" transform="translate(134.153281 100.005328) scale(0.07 -0.07)">
      <defs>
       <path id="UKaiCN-5e76" d="M 2194 4644 
 Q 2369 4475 2563 4281 
@@ -3411,36 +3411,32 @@ z
      <use xlink:href="#UKaiCN-20" transform="translate(699.902344 0)"/>
      <use xlink:href="#UKaiCN-6bcf" transform="translate(749.902344 0)"/>
      <use xlink:href="#UKaiCN-4e2a" transform="translate(849.902344 0)"/>
-     <use xlink:href="#UKaiCN-20" transform="translate(949.902344 0)"/>
-     <use xlink:href="#UKaiCN-6c" transform="translate(999.902344 0)"/>
-     <use xlink:href="#UKaiCN-61" transform="translate(1049.902344 0)"/>
-     <use xlink:href="#UKaiCN-6e" transform="translate(1099.902344 0)"/>
-     <use xlink:href="#UKaiCN-65" transform="translate(1149.902344 0)"/>
-     <use xlink:href="#UKaiCN-20" transform="translate(1199.902344 0)"/>
-     <use xlink:href="#UKaiCN-6267" transform="translate(1249.902344 0)"/>
-     <use xlink:href="#UKaiCN-884c" transform="translate(1349.902344 0)"/>
-     <use xlink:href="#UKaiCN-20" transform="translate(1449.902344 0)"/>
-     <use xlink:href="#UKaiCN-4c" transform="translate(1499.902344 0)"/>
-     <use xlink:href="#UKaiCN-4d" transform="translate(1549.902344 0)"/>
-     <use xlink:href="#UKaiCN-20" transform="translate(1599.902344 0)"/>
-     <use xlink:href="#UKaiCN-8fed" transform="translate(1649.902344 0)"/>
-     <use xlink:href="#UKaiCN-4ee3" transform="translate(1749.902344 0)"/>
-     <use xlink:href="#UKaiCN-6c42" transform="translate(1849.902344 0)"/>
-     <use xlink:href="#UKaiCN-89e3" transform="translate(1949.902344 0)"/>
+     <use xlink:href="#UKaiCN-6c" transform="translate(949.902344 0)"/>
+     <use xlink:href="#UKaiCN-61" transform="translate(999.902344 0)"/>
+     <use xlink:href="#UKaiCN-6e" transform="translate(1049.902344 0)"/>
+     <use xlink:href="#UKaiCN-65" transform="translate(1099.902344 0)"/>
+     <use xlink:href="#UKaiCN-6267" transform="translate(1149.902344 0)"/>
+     <use xlink:href="#UKaiCN-884c" transform="translate(1249.902344 0)"/>
+     <use xlink:href="#UKaiCN-4c" transform="translate(1349.902344 0)"/>
+     <use xlink:href="#UKaiCN-4d" transform="translate(1399.902344 0)"/>
+     <use xlink:href="#UKaiCN-8fed" transform="translate(1449.902344 0)"/>
+     <use xlink:href="#UKaiCN-4ee3" transform="translate(1549.902344 0)"/>
+     <use xlink:href="#UKaiCN-6c42" transform="translate(1649.902344 0)"/>
+     <use xlink:href="#UKaiCN-89e3" transform="translate(1749.902344 0)"/>
     </g>
    </g>
    <g id="patch_16">
-    <path d="M 198.9 121.727493 
-Q 198.9 122.995927 198.9 122.922721 
+    <path d="M 198.9 107.966399 
+Q 198.9 109.234834 198.9 109.161627 
 " style="fill: none; stroke: #555555; stroke-width: 1.2; stroke-linecap: round"/>
-    <path d="M 200.1 120.522721 
-L 198.9 122.922721 
-L 197.7 120.522721 
+    <path d="M 200.1 106.761627 
+L 198.9 109.161627 
+L 197.7 106.761627 
 " style="fill: none; stroke: #555555; stroke-width: 1.2; stroke-linecap: round"/>
    </g>
    <g id="text_5">
     <!-- LM迭代 (max 60): -->
-    <g style="fill: #ffffff" transform="translate(67.534578 134.622211) scale(0.055 -0.055)">
+    <g style="fill: #ffffff" transform="translate(67.534578 120.861117) scale(0.055 -0.055)">
      <defs>
       <path id="UKaiCN-28" d="M 2425 5275 
 L 2425 5138 
@@ -3555,7 +3551,7 @@ z
      <use xlink:href="#UKaiCN-3a" transform="translate(749.902344 0)"/>
     </g>
     <!-- 1. FK with frames → T,p,z -->
-    <g style="fill: #ffffff" transform="translate(53.782 139.524945) scale(0.055 -0.055)">
+    <g style="fill: #ffffff" transform="translate(53.782 125.763852) scale(0.055 -0.055)">
      <defs>
       <path id="UKaiCN-46" d="M 1088 975 
 Q 1088 650 1500 650 
@@ -3739,7 +3735,7 @@ z
      <use xlink:href="#UKaiCN-7a" transform="translate(1250 0)"/>
     </g>
     <!-- 2. 解析Jacobian: Jv=z×(p-p) -->
-    <g style="fill: #ffffff" transform="translate(52.409578 145.463398) scale(0.055 -0.055)">
+    <g style="fill: #ffffff" transform="translate(52.409578 131.702305) scale(0.055 -0.055)">
      <defs>
       <path id="UKaiCN-6790" d="M 2038 2675 
 Q 2263 2506 2525 2269 
@@ -3910,7 +3906,7 @@ z
      <use xlink:href="#UKaiCN-29" transform="translate(1299.902344 0)"/>
     </g>
     <!-- 3. H=JTJ+λI, g=JTe -->
-    <g style="fill: #ffffff" transform="translate(63.407 150.821602) scale(0.055 -0.055)">
+    <g style="fill: #ffffff" transform="translate(63.407 137.060508) scale(0.055 -0.055)">
      <defs>
       <path id="UKaiCN-48" d="M 3100 475 
 L 1800 475 
@@ -4083,7 +4079,7 @@ z
      <use xlink:href="#UKaiCN-65" transform="translate(900 0)"/>
     </g>
     <!-- 4. 6×6 Gauss Elim -->
-    <g style="fill: #ffffff" transform="translate(66.162156 155.671055) scale(0.055 -0.055)">
+    <g style="fill: #ffffff" transform="translate(66.162156 141.909961) scale(0.055 -0.055)">
      <defs>
       <path id="UKaiCN-34" d="M 2263 1469 
 L 2994 1469 
@@ -4159,7 +4155,7 @@ z
      <use xlink:href="#UKaiCN-6d" transform="translate(799.804688 0)"/>
     </g>
     <!-- 5. λ自适应缩放 -->
-    <g style="fill: #ffffff" transform="translate(68.907 161.357883) scale(0.055 -0.055)">
+    <g style="fill: #ffffff" transform="translate(68.907 147.596789) scale(0.055 -0.055)">
      <defs>
       <path id="UKaiCN-81ea" d="M 1975 388 
 Q 2056 381 2144 388 
@@ -4654,8 +4650,8 @@ z
     </g>
    </g>
    <g id="text_6">
-    <!-- Loss 评估: -->
-    <g style="fill: #ffffff" transform="translate(294.518 137.67325) scale(0.055 -0.055)">
+    <!-- Loss评估: -->
+    <g style="fill: #ffffff" transform="translate(295.893 123.912156) scale(0.055 -0.055)">
      <defs>
       <path id="UKaiCN-8bc4" d="M 1750 4763 
 Q 1981 4613 2225 4431 
@@ -4819,13 +4815,12 @@ z
      <use xlink:href="#UKaiCN-6f" transform="translate(50 0)"/>
      <use xlink:href="#UKaiCN-73" transform="translate(100 0)"/>
      <use xlink:href="#UKaiCN-73" transform="translate(150 0)"/>
-     <use xlink:href="#UKaiCN-20" transform="translate(200 0)"/>
-     <use xlink:href="#UKaiCN-8bc4" transform="translate(250 0)"/>
-     <use xlink:href="#UKaiCN-4f30" transform="translate(350 0)"/>
-     <use xlink:href="#UKaiCN-3a" transform="translate(450 0)"/>
+     <use xlink:href="#UKaiCN-8bc4" transform="translate(200 0)"/>
+     <use xlink:href="#UKaiCN-4f30" transform="translate(300 0)"/>
+     <use xlink:href="#UKaiCN-3a" transform="translate(400 0)"/>
     </g>
-    <!-- - Pose cost = |ep|²+|eR|² -->
-    <g style="fill: #ffffff" transform="translate(273.871516 143.425047) scale(0.055 -0.055)">
+    <!-- - Pose cost=|ep|²+|eR|² -->
+    <g style="fill: #ffffff" transform="translate(276.621516 129.663953) scale(0.055 -0.055)">
      <defs>
       <path id="UKaiCN-50" d="M 1500 650 
 L 1500 475 
@@ -4933,23 +4928,21 @@ z
      <use xlink:href="#UKaiCN-6f" transform="translate(400.78125 0)"/>
      <use xlink:href="#UKaiCN-73" transform="translate(450.78125 0)"/>
      <use xlink:href="#UKaiCN-74" transform="translate(500.78125 0)"/>
-     <use xlink:href="#UKaiCN-20" transform="translate(550.78125 0)"/>
-     <use xlink:href="#UKaiCN-3d" transform="translate(600.78125 0)"/>
-     <use xlink:href="#UKaiCN-20" transform="translate(650.78125 0)"/>
-     <use xlink:href="#UKaiCN-7c" transform="translate(700.78125 0)"/>
-     <use xlink:href="#UKaiCN-65" transform="translate(750.78125 0)"/>
-     <use xlink:href="#UKaiCN-70" transform="translate(800.78125 0)"/>
-     <use xlink:href="#UKaiCN-7c" transform="translate(850.78125 0)"/>
-     <use xlink:href="#UKaiCN-b2" transform="translate(900.78125 0)"/>
-     <use xlink:href="#UKaiCN-2b" transform="translate(950.78125 0)"/>
-     <use xlink:href="#UKaiCN-7c" transform="translate(1000.78125 0)"/>
-     <use xlink:href="#UKaiCN-65" transform="translate(1050.78125 0)"/>
-     <use xlink:href="#UKaiCN-52" transform="translate(1100.78125 0)"/>
-     <use xlink:href="#UKaiCN-7c" transform="translate(1150.78125 0)"/>
-     <use xlink:href="#UKaiCN-b2" transform="translate(1200.78125 0)"/>
+     <use xlink:href="#UKaiCN-3d" transform="translate(550.78125 0)"/>
+     <use xlink:href="#UKaiCN-7c" transform="translate(600.78125 0)"/>
+     <use xlink:href="#UKaiCN-65" transform="translate(650.78125 0)"/>
+     <use xlink:href="#UKaiCN-70" transform="translate(700.78125 0)"/>
+     <use xlink:href="#UKaiCN-7c" transform="translate(750.78125 0)"/>
+     <use xlink:href="#UKaiCN-b2" transform="translate(800.78125 0)"/>
+     <use xlink:href="#UKaiCN-2b" transform="translate(850.78125 0)"/>
+     <use xlink:href="#UKaiCN-7c" transform="translate(900.78125 0)"/>
+     <use xlink:href="#UKaiCN-65" transform="translate(950.78125 0)"/>
+     <use xlink:href="#UKaiCN-52" transform="translate(1000.78125 0)"/>
+     <use xlink:href="#UKaiCN-7c" transform="translate(1050.78125 0)"/>
+     <use xlink:href="#UKaiCN-b2" transform="translate(1100.78125 0)"/>
     </g>
     <!-- - Limit barrier penalty -->
-    <g style="fill: #ffffff" transform="translate(276.643 148.327781) scale(0.055 -0.055)">
+    <g style="fill: #ffffff" transform="translate(276.643 134.566687) scale(0.055 -0.055)">
      <defs>
       <path id="UKaiCN-79" d="M 1263 25 
 L 1506 631 
@@ -5001,8 +4994,8 @@ z
      <use xlink:href="#UKaiCN-74" transform="translate(1050 0)"/>
      <use xlink:href="#UKaiCN-79" transform="translate(1100 0)"/>
     </g>
-    <!-- - Total = 0.5·pose+w·barrier -->
-    <g style="fill: #ffffff" transform="translate(269.768 153.177234) scale(0.055 -0.055)">
+    <!-- - Total=0.5·pose+w·barrier -->
+    <g style="fill: #ffffff" transform="translate(272.518 139.416141) scale(0.055 -0.055)">
      <defs>
       <path id="UKaiCN-b7" d="M 1291 2103 
 Q 1163 2231 1163 2412 
@@ -5023,30 +5016,28 @@ z
      <use xlink:href="#UKaiCN-74" transform="translate(200 0)"/>
      <use xlink:href="#UKaiCN-61" transform="translate(250 0)"/>
      <use xlink:href="#UKaiCN-6c" transform="translate(300 0)"/>
-     <use xlink:href="#UKaiCN-20" transform="translate(350 0)"/>
-     <use xlink:href="#UKaiCN-3d" transform="translate(400 0)"/>
-     <use xlink:href="#UKaiCN-20" transform="translate(450 0)"/>
-     <use xlink:href="#UKaiCN-30" transform="translate(500 0)"/>
-     <use xlink:href="#UKaiCN-2e" transform="translate(550 0)"/>
-     <use xlink:href="#UKaiCN-35" transform="translate(600 0)"/>
-     <use xlink:href="#UKaiCN-b7" transform="translate(650 0)"/>
-     <use xlink:href="#UKaiCN-70" transform="translate(700 0)"/>
-     <use xlink:href="#UKaiCN-6f" transform="translate(750 0)"/>
-     <use xlink:href="#UKaiCN-73" transform="translate(800 0)"/>
-     <use xlink:href="#UKaiCN-65" transform="translate(850 0)"/>
-     <use xlink:href="#UKaiCN-2b" transform="translate(900 0)"/>
-     <use xlink:href="#UKaiCN-77" transform="translate(950 0)"/>
-     <use xlink:href="#UKaiCN-b7" transform="translate(1000 0)"/>
-     <use xlink:href="#UKaiCN-62" transform="translate(1050 0)"/>
-     <use xlink:href="#UKaiCN-61" transform="translate(1100 0)"/>
-     <use xlink:href="#UKaiCN-72" transform="translate(1150 0)"/>
-     <use xlink:href="#UKaiCN-72" transform="translate(1200 0)"/>
-     <use xlink:href="#UKaiCN-69" transform="translate(1250 0)"/>
-     <use xlink:href="#UKaiCN-65" transform="translate(1300 0)"/>
-     <use xlink:href="#UKaiCN-72" transform="translate(1350 0)"/>
+     <use xlink:href="#UKaiCN-3d" transform="translate(350 0)"/>
+     <use xlink:href="#UKaiCN-30" transform="translate(400 0)"/>
+     <use xlink:href="#UKaiCN-2e" transform="translate(450 0)"/>
+     <use xlink:href="#UKaiCN-35" transform="translate(500 0)"/>
+     <use xlink:href="#UKaiCN-b7" transform="translate(550 0)"/>
+     <use xlink:href="#UKaiCN-70" transform="translate(600 0)"/>
+     <use xlink:href="#UKaiCN-6f" transform="translate(650 0)"/>
+     <use xlink:href="#UKaiCN-73" transform="translate(700 0)"/>
+     <use xlink:href="#UKaiCN-65" transform="translate(750 0)"/>
+     <use xlink:href="#UKaiCN-2b" transform="translate(800 0)"/>
+     <use xlink:href="#UKaiCN-77" transform="translate(850 0)"/>
+     <use xlink:href="#UKaiCN-b7" transform="translate(900 0)"/>
+     <use xlink:href="#UKaiCN-62" transform="translate(950 0)"/>
+     <use xlink:href="#UKaiCN-61" transform="translate(1000 0)"/>
+     <use xlink:href="#UKaiCN-72" transform="translate(1050 0)"/>
+     <use xlink:href="#UKaiCN-72" transform="translate(1100 0)"/>
+     <use xlink:href="#UKaiCN-69" transform="translate(1150 0)"/>
+     <use xlink:href="#UKaiCN-65" transform="translate(1200 0)"/>
+     <use xlink:href="#UKaiCN-72" transform="translate(1250 0)"/>
     </g>
     <!-- - Trial accept: q←q+dq -->
-    <g style="fill: #ffffff" transform="translate(276.643 158.026687) scale(0.055 -0.055)">
+    <g style="fill: #ffffff" transform="translate(276.643 144.265594) scale(0.055 -0.055)">
      <defs>
       <path id="UKaiCN-71" d="M 2169 2825 
 L 2388 3031 
@@ -5119,44 +5110,44 @@ z
     </g>
    </g>
    <g id="patch_17">
-    <path d="M 196.920776 117.824999 
-Q 144.217755 125.171849 92.843525 132.333464 
+    <path d="M 196.920776 104.063906 
+Q 144.217755 111.410755 92.843525 118.57237 
 " style="fill: none; stroke: #555555; stroke-width: 1.2; stroke-linecap: round"/>
-    <path d="M 95.38622 133.190614 
-L 92.843525 132.333464 
-L 95.054862 130.813598 
+    <path d="M 95.38622 119.42952 
+L 92.843525 118.57237 
+L 95.054862 117.052505 
 " style="fill: none; stroke: #555555; stroke-width: 1.2; stroke-linecap: round"/>
    </g>
    <g id="patch_18">
-    <path d="M 200.879224 117.824999 
-Q 253.582245 125.171849 304.956475 132.333464 
+    <path d="M 200.879224 104.063906 
+Q 253.582245 111.410755 304.956475 118.57237 
 " style="fill: none; stroke: #555555; stroke-width: 1.2; stroke-linecap: round"/>
-    <path d="M 302.745138 130.813598 
-L 304.956475 132.333464 
-L 302.41378 133.190614 
+    <path d="M 302.745138 117.052505 
+L 304.956475 118.57237 
+L 302.41378 119.42952 
 " style="fill: none; stroke: #555555; stroke-width: 1.2; stroke-linecap: round"/>
    </g>
    <g id="patch_19">
-    <path d="M 91.511224 159.206999 
-Q 144.214245 166.553849 195.588475 173.715464 
+    <path d="M 91.511224 145.445906 
+Q 144.214245 152.792755 195.588475 159.95437 
 " style="fill: none; stroke: #555555; stroke-width: 1.2; stroke-linecap: round"/>
-    <path d="M 193.377138 172.195598 
-L 195.588475 173.715464 
-L 193.04578 174.572614 
+    <path d="M 193.377138 158.434505 
+L 195.588475 159.95437 
+L 193.04578 160.81152 
 " style="fill: none; stroke: #555555; stroke-width: 1.2; stroke-linecap: round"/>
    </g>
    <g id="patch_20">
-    <path d="M 306.288776 159.206999 
-Q 253.585755 166.553849 202.211525 173.715464 
+    <path d="M 306.288776 145.445906 
+Q 253.585755 152.792755 202.211525 159.95437 
 " style="fill: none; stroke: #555555; stroke-width: 1.2; stroke-linecap: round"/>
-    <path d="M 204.75422 174.572614 
-L 202.211525 173.715464 
-L 204.422862 172.195598 
+    <path d="M 204.75422 160.81152 
+L 202.211525 159.95437 
+L 204.422862 158.434505 
 " style="fill: none; stroke: #555555; stroke-width: 1.2; stroke-linecap: round"/>
    </g>
    <g id="text_7">
     <!-- 收敛? (pos&lt;5mm &amp; rot&lt;1°) 或 iter=max? -->
-    <g style="fill: #ffffff" transform="translate(138.775 187.587367) scale(0.065 -0.065)">
+    <g style="fill: #ffffff" transform="translate(138.775 173.826273) scale(0.065 -0.065)">
      <defs>
       <path id="UKaiCN-6536" d="M 2100 2094 
 Q 2075 1194 1994 850 
@@ -5576,24 +5567,24 @@ z
     </g>
    </g>
    <g id="patch_21">
-    <path d="M 323.081463 183.234639 
-Q 338.110859 184.093714 351.8008 184.876226 
+    <path d="M 323.081463 169.473545 
+Q 338.110859 170.33262 351.8008 171.115132 
 " style="fill: none; stroke: #555555; stroke-width: 1.2; stroke-linecap: round"/>
-    <path d="M 349.473191 183.541222 
-L 351.8008 184.876226 
-L 349.336232 185.937311 
+    <path d="M 349.473191 169.780128 
+L 351.8008 171.115132 
+L 349.336232 172.176217 
 " style="fill: none; stroke: #555555; stroke-width: 1.2; stroke-linecap: round"/>
    </g>
    <g id="text_8">
     <!-- No -->
-    <g style="fill: #555555" transform="translate(313.08 184.726781) scale(0.06 -0.06)">
+    <g style="fill: #555555" transform="translate(313.08 170.965687) scale(0.06 -0.06)">
      <use xlink:href="#UKaiCN-4e"/>
      <use xlink:href="#UKaiCN-6f" transform="translate(50 0)"/>
     </g>
    </g>
    <g id="text_9">
     <!-- 继续 -->
-    <g style="fill: #ffffff" transform="translate(369.67 186.919828) scale(0.05 -0.05)">
+    <g style="fill: #ffffff" transform="translate(369.67 173.158734) scale(0.05 -0.05)">
      <defs>
       <path id="UKaiCN-7ee7" d="M 1713 2800 
 Q 1106 2013 1006 1956 
@@ -5855,17 +5846,17 @@ z
     </g>
    </g>
    <g id="patch_22">
-    <path d="M 198.9 197.779678 
-Q 198.9 204.580539 198.9 210.03976 
+    <path d="M 198.9 184.018584 
+Q 198.9 190.819445 198.9 196.278666 
 " style="fill: none; stroke: #555555; stroke-width: 1.2; stroke-linecap: round"/>
-    <path d="M 200.1 207.63976 
-L 198.9 210.03976 
-L 197.7 207.63976 
+    <path d="M 200.1 193.878666 
+L 198.9 196.278666 
+L 197.7 193.878666 
 " style="fill: none; stroke: #555555; stroke-width: 1.2; stroke-linecap: round"/>
    </g>
    <g id="text_10">
     <!-- Yes -->
-    <g style="fill: #555555" transform="translate(194.4 193.438781) scale(0.06 -0.06)">
+    <g style="fill: #555555" transform="translate(194.4 179.677687) scale(0.06 -0.06)">
      <defs>
       <path id="UKaiCN-59" d="M 506 3925 
 Q 375 4163 38 4163 
@@ -5898,8 +5889,8 @@ z
     </g>
    </g>
    <g id="text_11">
-    <!-- 16个候选解写入 Shared Memory s_cand[] -->
-    <g style="fill: #ffffff" transform="translate(134.153281 226.885703) scale(0.07 -0.07)">
+    <!-- 16个候选解写入Shared Memory s_cand[] -->
+    <g style="fill: #ffffff" transform="translate(135.903281 213.124609) scale(0.07 -0.07)">
      <defs>
       <path id="UKaiCN-5019" d="M 1313 3050 
 Q 1506 2669 1356 1450 
@@ -6194,43 +6185,42 @@ z
      <use xlink:href="#UKaiCN-89e3" transform="translate(399.902344 0)"/>
      <use xlink:href="#UKaiCN-5199" transform="translate(499.902344 0)"/>
      <use xlink:href="#UKaiCN-5165" transform="translate(599.902344 0)"/>
-     <use xlink:href="#UKaiCN-20" transform="translate(699.902344 0)"/>
-     <use xlink:href="#UKaiCN-53" transform="translate(749.902344 0)"/>
-     <use xlink:href="#UKaiCN-68" transform="translate(799.902344 0)"/>
-     <use xlink:href="#UKaiCN-61" transform="translate(849.902344 0)"/>
-     <use xlink:href="#UKaiCN-72" transform="translate(899.902344 0)"/>
-     <use xlink:href="#UKaiCN-65" transform="translate(949.902344 0)"/>
-     <use xlink:href="#UKaiCN-64" transform="translate(999.902344 0)"/>
-     <use xlink:href="#UKaiCN-20" transform="translate(1049.902344 0)"/>
-     <use xlink:href="#UKaiCN-4d" transform="translate(1099.902344 0)"/>
-     <use xlink:href="#UKaiCN-65" transform="translate(1149.902344 0)"/>
-     <use xlink:href="#UKaiCN-6d" transform="translate(1199.902344 0)"/>
-     <use xlink:href="#UKaiCN-6f" transform="translate(1249.902344 0)"/>
-     <use xlink:href="#UKaiCN-72" transform="translate(1299.902344 0)"/>
-     <use xlink:href="#UKaiCN-79" transform="translate(1349.902344 0)"/>
-     <use xlink:href="#UKaiCN-20" transform="translate(1399.902344 0)"/>
-     <use xlink:href="#UKaiCN-73" transform="translate(1449.902344 0)"/>
-     <use xlink:href="#UKaiCN-5f" transform="translate(1499.902344 0)"/>
-     <use xlink:href="#UKaiCN-63" transform="translate(1549.902344 0)"/>
-     <use xlink:href="#UKaiCN-61" transform="translate(1599.902344 0)"/>
-     <use xlink:href="#UKaiCN-6e" transform="translate(1649.902344 0)"/>
-     <use xlink:href="#UKaiCN-64" transform="translate(1699.902344 0)"/>
-     <use xlink:href="#UKaiCN-5b" transform="translate(1749.902344 0)"/>
-     <use xlink:href="#UKaiCN-5d" transform="translate(1799.902344 0)"/>
+     <use xlink:href="#UKaiCN-53" transform="translate(699.902344 0)"/>
+     <use xlink:href="#UKaiCN-68" transform="translate(749.902344 0)"/>
+     <use xlink:href="#UKaiCN-61" transform="translate(799.902344 0)"/>
+     <use xlink:href="#UKaiCN-72" transform="translate(849.902344 0)"/>
+     <use xlink:href="#UKaiCN-65" transform="translate(899.902344 0)"/>
+     <use xlink:href="#UKaiCN-64" transform="translate(949.902344 0)"/>
+     <use xlink:href="#UKaiCN-20" transform="translate(999.902344 0)"/>
+     <use xlink:href="#UKaiCN-4d" transform="translate(1049.902344 0)"/>
+     <use xlink:href="#UKaiCN-65" transform="translate(1099.902344 0)"/>
+     <use xlink:href="#UKaiCN-6d" transform="translate(1149.902344 0)"/>
+     <use xlink:href="#UKaiCN-6f" transform="translate(1199.902344 0)"/>
+     <use xlink:href="#UKaiCN-72" transform="translate(1249.902344 0)"/>
+     <use xlink:href="#UKaiCN-79" transform="translate(1299.902344 0)"/>
+     <use xlink:href="#UKaiCN-20" transform="translate(1349.902344 0)"/>
+     <use xlink:href="#UKaiCN-73" transform="translate(1399.902344 0)"/>
+     <use xlink:href="#UKaiCN-5f" transform="translate(1449.902344 0)"/>
+     <use xlink:href="#UKaiCN-63" transform="translate(1499.902344 0)"/>
+     <use xlink:href="#UKaiCN-61" transform="translate(1549.902344 0)"/>
+     <use xlink:href="#UKaiCN-6e" transform="translate(1599.902344 0)"/>
+     <use xlink:href="#UKaiCN-64" transform="translate(1649.902344 0)"/>
+     <use xlink:href="#UKaiCN-5b" transform="translate(1699.902344 0)"/>
+     <use xlink:href="#UKaiCN-5d" transform="translate(1749.902344 0)"/>
     </g>
    </g>
    <g id="patch_23">
-    <path d="M 198.9 232.808684 
-Q 198.9 235.162196 198.9 236.174067 
+    <path d="M 198.9 219.04759 
+Q 198.9 221.401102 198.9 222.412973 
 " style="fill: none; stroke: #555555; stroke-width: 1.2; stroke-linecap: round"/>
-    <path d="M 200.1 233.774067 
-L 198.9 236.174067 
-L 197.7 233.774067 
+    <path d="M 200.1 220.012973 
+L 198.9 222.412973 
+L 197.7 220.012973 
 " style="fill: none; stroke: #555555; stroke-width: 1.2; stroke-linecap: round"/>
    </g>
    <g id="text_12">
     <!-- Lane 0: 块内候选选择 -->
-    <g style="fill: #ffffff" transform="translate(163.9 252.175484) scale(0.07 -0.07)">
+    <g style="fill: #ffffff" transform="translate(163.9 238.414391) scale(0.07 -0.07)">
      <defs>
       <path id="UKaiCN-5757" d="M 1513 1775 
 Q 1150 1656 763 1494 
@@ -6494,7 +6484,7 @@ z
      <use xlink:href="#UKaiCN-62e9" transform="translate(900 0)"/>
     </g>
     <!-- Success Rank→Near-Limit→Pose Cost -->
-    <g style="fill: #ffffff" transform="translate(137.622656 258.360641) scale(0.07 -0.07)">
+    <g style="fill: #ffffff" transform="translate(137.622656 244.599547) scale(0.07 -0.07)">
      <use xlink:href="#UKaiCN-53"/>
      <use xlink:href="#UKaiCN-75" transform="translate(50 0)"/>
      <use xlink:href="#UKaiCN-63" transform="translate(100 0)"/>
@@ -6531,17 +6521,17 @@ z
     </g>
    </g>
    <g id="patch_24">
-    <path d="M 198.9 263.300684 
-Q 198.9 265.654196 198.9 266.666067 
+    <path d="M 198.9 249.53959 
+Q 198.9 251.893102 198.9 252.904973 
 " style="fill: none; stroke: #555555; stroke-width: 1.2; stroke-linecap: round"/>
-    <path d="M 200.1 264.266067 
-L 198.9 266.666067 
-L 197.7 264.266067 
+    <path d="M 200.1 250.504973 
+L 198.9 252.904973 
+L 197.7 250.504973 
 " style="fill: none; stroke: #555555; stroke-width: 1.2; stroke-linecap: round"/>
    </g>
    <g id="text_13">
-    <!-- best[i] 写入 Global Memory -->
-    <g style="fill: #ffffff" transform="translate(153.4 285.729437) scale(0.07 -0.07)">
+    <!-- best[i] 写入Global Memory -->
+    <g style="fill: #ffffff" transform="translate(155.15 271.968344) scale(0.07 -0.07)">
      <use xlink:href="#UKaiCN-62"/>
      <use xlink:href="#UKaiCN-65" transform="translate(50 0)"/>
      <use xlink:href="#UKaiCN-73" transform="translate(100 0)"/>
@@ -6552,34 +6542,33 @@ L 197.7 264.266067
      <use xlink:href="#UKaiCN-20" transform="translate(350 0)"/>
      <use xlink:href="#UKaiCN-5199" transform="translate(400 0)"/>
      <use xlink:href="#UKaiCN-5165" transform="translate(500 0)"/>
-     <use xlink:href="#UKaiCN-20" transform="translate(600 0)"/>
-     <use xlink:href="#UKaiCN-47" transform="translate(650 0)"/>
-     <use xlink:href="#UKaiCN-6c" transform="translate(700 0)"/>
-     <use xlink:href="#UKaiCN-6f" transform="translate(750 0)"/>
-     <use xlink:href="#UKaiCN-62" transform="translate(800 0)"/>
-     <use xlink:href="#UKaiCN-61" transform="translate(850 0)"/>
-     <use xlink:href="#UKaiCN-6c" transform="translate(900 0)"/>
-     <use xlink:href="#UKaiCN-20" transform="translate(950 0)"/>
-     <use xlink:href="#UKaiCN-4d" transform="translate(1000 0)"/>
-     <use xlink:href="#UKaiCN-65" transform="translate(1050 0)"/>
-     <use xlink:href="#UKaiCN-6d" transform="translate(1100 0)"/>
-     <use xlink:href="#UKaiCN-6f" transform="translate(1150 0)"/>
-     <use xlink:href="#UKaiCN-72" transform="translate(1200 0)"/>
-     <use xlink:href="#UKaiCN-79" transform="translate(1250 0)"/>
+     <use xlink:href="#UKaiCN-47" transform="translate(600 0)"/>
+     <use xlink:href="#UKaiCN-6c" transform="translate(650 0)"/>
+     <use xlink:href="#UKaiCN-6f" transform="translate(700 0)"/>
+     <use xlink:href="#UKaiCN-62" transform="translate(750 0)"/>
+     <use xlink:href="#UKaiCN-61" transform="translate(800 0)"/>
+     <use xlink:href="#UKaiCN-6c" transform="translate(850 0)"/>
+     <use xlink:href="#UKaiCN-20" transform="translate(900 0)"/>
+     <use xlink:href="#UKaiCN-4d" transform="translate(950 0)"/>
+     <use xlink:href="#UKaiCN-65" transform="translate(1000 0)"/>
+     <use xlink:href="#UKaiCN-6d" transform="translate(1050 0)"/>
+     <use xlink:href="#UKaiCN-6f" transform="translate(1100 0)"/>
+     <use xlink:href="#UKaiCN-72" transform="translate(1150 0)"/>
+     <use xlink:href="#UKaiCN-79" transform="translate(1200 0)"/>
     </g>
    </g>
    <g id="patch_25">
-    <path d="M 198.9 291.613088 
-Q 198.9 295.056756 198.9 297.158784 
+    <path d="M 198.9 277.851995 
+Q 198.9 281.295663 198.9 283.39769 
 " style="fill: none; stroke: #555555; stroke-width: 1.2; stroke-linecap: round"/>
-    <path d="M 200.1 294.758784 
-L 198.9 297.158784 
-L 197.7 294.758784 
+    <path d="M 200.1 280.99769 
+L 198.9 283.39769 
+L 197.7 280.99769 
 " style="fill: none; stroke: #555555; stroke-width: 1.2; stroke-linecap: round"/>
    </g>
    <g id="text_14">
     <!-- 输出: N×18 best [q, pos, rot, cost, rank] -->
-    <g style="fill: #ffffff" transform="translate(127.15 316.228547) scale(0.07 -0.07)">
+    <g style="fill: #ffffff" transform="translate(127.15 302.467453) scale(0.07 -0.07)">
      <defs>
       <path id="UKaiCN-51fa" d="M 4869 800 
 Q 4894 200 5000 44 
@@ -6725,20 +6714,20 @@ z
    </g>
    <g id="text_15">
     <g id="patch_26">
-     <path d="M 366.888 84.841406 
-L 405.888 84.841406 
-Q 407.688 84.841406 407.688 83.041406 
-L 407.688 64.895719 
-Q 407.688 63.095719 405.888 63.095719 
-L 366.888 63.095719 
-Q 365.088 63.095719 365.088 64.895719 
-L 365.088 83.041406 
-Q 365.088 84.841406 366.888 84.841406 
+     <path d="M 366.888 71.080313 
+L 405.888 71.080313 
+Q 407.688 71.080313 407.688 69.280313 
+L 407.688 51.134625 
+Q 407.688 49.334625 405.888 49.334625 
+L 366.888 49.334625 
+Q 365.088 49.334625 365.088 51.134625 
+L 365.088 69.280313 
+Q 365.088 71.080313 366.888 71.080313 
 z
 " style="fill: #fff3cd; opacity: 0.8; stroke: #d4a017; stroke-linejoin: miter"/>
     </g>
     <!-- 每个Block处理 -->
-    <g transform="translate(366.888 70.245094) scale(0.06 -0.06)">
+    <g transform="translate(366.888 56.484) scale(0.06 -0.06)">
      <defs>
       <path id="UKaiCN-5904" d="M 2088 1613 
 Q 2150 1569 2225 1513 
@@ -6921,7 +6910,7 @@ z
      <use xlink:href="#UKaiCN-7406" transform="translate(550 0)"/>
     </g>
     <!-- 1个Target的 -->
-    <g transform="translate(369.888 76.644656) scale(0.06 -0.06)">
+    <g transform="translate(369.888 62.883563) scale(0.06 -0.06)">
      <defs>
       <path id="UKaiCN-7684" d="M 1306 1075 
 Q 1331 1075 1375 1081 
@@ -7030,7 +7019,7 @@ z
      <use xlink:href="#UKaiCN-7684" transform="translate(450 0)"/>
     </g>
     <!-- 16个种子 -->
-    <g transform="translate(374.390813 82.701094) scale(0.06 -0.06)">
+    <g transform="translate(374.390813 68.94) scale(0.06 -0.06)">
      <use xlink:href="#UKaiCN-31"/>
      <use xlink:href="#UKaiCN-36" transform="translate(50 0)"/>
      <use xlink:href="#UKaiCN-4e2a" transform="translate(99.902344 0)"/>
@@ -7040,20 +7029,20 @@ z
    </g>
    <g id="text_16">
     <g id="patch_27">
-     <path d="M 366.888 248.191406 
-L 405.888 248.191406 
-Q 407.688 248.191406 407.688 246.391406 
-L 407.688 222.696469 
-Q 407.688 220.896469 405.888 220.896469 
-L 366.888 220.896469 
-Q 365.088 220.896469 365.088 222.696469 
-L 365.088 246.391406 
-Q 365.088 248.191406 366.888 248.191406 
+     <path d="M 366.888 234.430313 
+L 405.888 234.430313 
+Q 407.688 234.430313 407.688 232.630313 
+L 407.688 208.935375 
+Q 407.688 207.135375 405.888 207.135375 
+L 366.888 207.135375 
+Q 365.088 207.135375 365.088 208.935375 
+L 365.088 232.630313 
+Q 365.088 234.430313 366.888 234.430313 
 z
 " style="fill: #d4edda; opacity: 0.8; stroke: #28a745; stroke-linejoin: miter"/>
     </g>
     <!-- 单Kernel -->
-    <g transform="translate(374.388 227.705531) scale(0.06 -0.06)">
+    <g transform="translate(374.388 213.944437) scale(0.06 -0.06)">
      <defs>
       <path id="UKaiCN-5355" d="M 2169 4538 
 Q 2356 4363 2563 4138 
@@ -7150,7 +7139,7 @@ z
      <use xlink:href="#UKaiCN-6c" transform="translate(350 0)"/>
     </g>
     <!-- 零调度开销 -->
-    <g transform="translate(371.388 234.223781) scale(0.06 -0.06)">
+    <g transform="translate(371.388 220.462687) scale(0.06 -0.06)">
      <defs>
       <path id="UKaiCN-96f6" d="M 3019 4244 
 Q 3038 4125 2981 3606 
@@ -7690,7 +7679,7 @@ z
      <use xlink:href="#UKaiCN-9500" transform="translate(400 0)"/>
     </g>
     <!-- 无额外筛选 -->
-    <g transform="translate(371.388 240.632344) scale(0.06 -0.06)">
+    <g transform="translate(371.388 226.87125) scale(0.06 -0.06)">
      <defs>
       <path id="UKaiCN-65e0" d="M 2581 2544 
 Q 2556 2463 2538 2363 
@@ -8091,7 +8080,7 @@ z
      <use xlink:href="#UKaiCN-9009" transform="translate(400 0)"/>
     </g>
     <!-- Kernel Launch -->
-    <g transform="translate(366.888 246.051094) scale(0.06 -0.06)">
+    <g transform="translate(366.888 232.29) scale(0.06 -0.06)">
      <use xlink:href="#UKaiCN-4b"/>
      <use xlink:href="#UKaiCN-65" transform="translate(50 0)"/>
      <use xlink:href="#UKaiCN-72" transform="translate(100 0)"/>
@@ -8107,507 +8096,11 @@ z
      <use xlink:href="#UKaiCN-68" transform="translate(600 0)"/>
     </g>
    </g>
-   <g id="text_17">
-    <!-- OPT4C 求解器算法流程 -->
-    <g transform="translate(153.864844 11.361094) scale(0.09 -0.09)">
-     <defs>
-      <path id="UKaiCN-4f" d="M 650 3819 
-Q 1088 4400 1600 4400 
-Q 2113 4400 2550 3819 
-Q 3006 3213 3006 2406 
-Q 3006 1600 2550 994 
-Q 2113 413 1600 413 
-Q 1088 413 650 994 
-Q 194 1600 194 2406 
-Q 194 3213 650 3819 
-z
-M 2194 3669 
-Q 1906 4225 1600 4225 
-Q 1294 4225 1006 3669 
-Q 669 3006 669 2406 
-Q 669 1806 1006 1144 
-Q 1294 588 1600 588 
-Q 1906 588 2194 1144 
-Q 2531 1806 2531 2406 
-Q 2531 3006 2194 3669 
-z
-" transform="scale(0.015625)"/>
-      <path id="UKaiCN-7b97" d="M 2219 4769 
-Q 2444 4638 2750 4706 
-Q 2981 4744 3231 4781 
-Q 3350 4800 3363 4813 
-Q 3419 4856 3388 4906 
-Q 3350 4969 3188 5019 
-Q 3088 5044 2581 4938 
-Q 2450 4919 2313 4913 
-Q 2356 4975 2406 5038 
-Q 2469 5113 2381 5194 
-Q 2150 5381 1994 5369 
-Q 1931 5350 1938 5269 
-Q 1994 4763 1475 4169 
-Q 1363 4069 1256 3919 
-Q 1213 3838 1294 3856 
-Q 1650 3931 2069 4531 
-Q 2106 4625 2219 4769 
-z
-M 2306 4300 
-Q 2494 4094 2638 4044 
-Q 2713 4038 2750 4100 
-Q 2775 4163 2756 4244 
-Q 2719 4363 2631 4419 
-Q 2613 4425 2356 4494 
-Q 2275 4513 2225 4488 
-Q 2200 4481 2213 4425 
-Q 2219 4369 2306 4300 
-z
-M 4000 4925 
-Q 4244 4794 4550 4869 
-Q 4856 4925 5175 4988 
-Q 5313 5013 5344 5038 
-Q 5388 5081 5369 5131 
-Q 5325 5194 5163 5244 
-Q 4988 5269 4819 5206 
-Q 4650 5163 4475 5119 
-Q 4300 5081 4100 5063 
-Q 4125 5106 4175 5156 
-Q 4238 5231 4156 5313 
-Q 3913 5519 3769 5500 
-Q 3706 5494 3713 5406 
-Q 3769 4975 3313 4463 
-Q 3200 4363 3156 4294 
-Q 3113 4213 3194 4231 
-Q 3481 4269 3906 4794 
-Q 3925 4831 4000 4925 
-z
-M 4250 4400 
-Q 4575 4119 4656 4125 
-Q 4713 4131 4731 4200 
-Q 4756 4281 4700 4431 
-Q 4644 4563 4213 4644 
-Q 4131 4650 4100 4644 
-Q 4075 4619 4088 4556 
-Q 4106 4500 4250 4400 
-z
-M 2475 2169 
-Q 2519 2163 2575 2169 
-Q 2956 2231 3769 2256 
-Q 3775 2250 3788 2225 
-Q 3850 2038 3913 2038 
-Q 3994 2038 4113 2225 
-Q 4213 2363 4225 2494 
-Q 4206 3413 4406 3650 
-Q 4469 3750 4431 3813 
-Q 4263 3969 3975 4119 
-Q 3881 4163 3731 4119 
-Q 3056 3875 2188 3863 
-Q 2150 3881 2113 3888 
-Q 2050 3913 2019 3888 
-Q 1994 3869 1994 3819 
-Q 1994 3813 2019 3756 
-Q 2175 3263 2206 2500 
-Q 2200 2269 2313 2100 
-Q 2406 1963 2444 2050 
-Q 2463 2106 2475 2169 
-z
-M 3713 2475 
-Q 3631 2531 3463 2494 
-Q 2931 2394 2494 2344 
-Q 2494 2556 2475 2638 
-Q 2500 2638 2550 2638 
-Q 3075 2700 3463 2738 
-Q 3600 2744 3556 2831 
-Q 3494 2913 3344 2950 
-Q 3206 2975 2463 2794 
-Q 2444 2988 2438 3144 
-Q 2463 3138 2513 3144 
-Q 3075 3225 3494 3281 
-Q 3631 3306 3581 3381 
-Q 3519 3463 3369 3494 
-Q 3231 3519 2425 3294 
-Q 2419 3563 2413 3656 
-Q 3113 3806 3625 3875 
-Q 3800 3900 3856 3813 
-Q 3969 3663 3806 2581 
-Q 3788 2519 3756 2438 
-Q 3738 2456 3713 2475 
-z
-M 3663 1381 
-Q 3663 444 3588 250 
-Q 3513 44 3731 -313 
-Q 3738 -319 3750 -338 
-Q 3825 -456 3875 -494 
-Q 3950 -500 3988 -413 
-Q 4069 -200 4044 0 
-Q 4006 1150 4031 1394 
-Q 4619 1419 5344 1400 
-Q 5569 1394 5769 1394 
-Q 5906 1388 5938 1450 
-Q 5981 1531 5869 1625 
-Q 5513 1906 5250 1856 
-Q 4756 1775 4050 1663 
-Q 4050 1813 4025 1831 
-Q 3869 1963 3744 2025 
-Q 3663 2050 3600 2000 
-Q 3563 1975 3613 1913 
-Q 3650 1838 3656 1613 
-Q 3413 1594 3156 1556 
-Q 2906 1531 2650 1500 
-Q 2669 1556 2700 1600 
-Q 2763 1713 2663 1769 
-Q 2381 1994 2231 1944 
-Q 2150 1919 2181 1825 
-Q 2219 1750 2231 1456 
-Q 1444 1394 588 1300 
-Q 450 1294 550 1169 
-Q 644 1069 769 1031 
-Q 906 988 1025 1019 
-Q 1575 1156 2206 1244 
-Q 2113 494 1494 50 
-Q 1394 -13 1300 -81 
-Q 1219 -138 1294 -150 
-Q 1575 -175 1981 150 
-Q 2394 450 2544 1088 
-Q 2563 1188 2594 1288 
-Q 3213 1363 3663 1381 
-z
-" transform="scale(0.015625)"/>
-      <path id="UKaiCN-6cd5" d="M 1688 4294 
-Q 1863 4138 2056 3944 
-Q 2150 3850 2263 3856 
-Q 2344 3856 2375 3956 
-Q 2413 4056 2350 4275 
-Q 2275 4488 1656 4638 
-Q 1544 4663 1500 4644 
-Q 1463 4619 1475 4525 
-Q 1500 4444 1688 4294 
-z
-M 988 3256 
-Q 1256 2900 1475 2794 
-Q 1575 2769 1644 2856 
-Q 1688 2938 1675 3050 
-Q 1619 3313 1081 3513 
-Q 981 3550 913 3531 
-Q 869 3525 881 3438 
-Q 888 3356 988 3256 
-z
-M 894 1113 
-Q 813 1094 825 981 
-Q 900 494 1125 369 
-Q 1169 325 1238 338 
-Q 1281 344 1300 506 
-Q 1344 813 2050 2469 
-Q 2094 2569 2094 2613 
-Q 2088 2675 2031 2638 
-Q 1919 2575 1169 1388 
-Q 1088 1250 894 1113 
-z
-M 4600 981 
-Q 4769 694 4956 344 
-Q 5019 188 5119 138 
-Q 5163 113 5238 163 
-Q 5338 225 5331 531 
-Q 5331 906 4350 1675 
-Q 4294 1719 4263 1650 
-Q 4238 1569 4288 1481 
-Q 4400 1313 4513 1119 
-Q 3775 1000 3025 856 
-Q 2963 850 2950 863 
-Q 2944 888 2981 931 
-Q 3625 1781 3875 1994 
-Q 3975 2094 3913 2163 
-Q 3856 2225 3719 2275 
-Q 3894 2369 5006 2438 
-Q 5931 2475 6000 2525 
-Q 6000 2531 6006 2538 
-Q 6031 2613 5931 2688 
-Q 5613 2900 5381 2850 
-Q 4869 2713 3963 2538 
-Q 3906 2531 3875 2519 
-Q 3900 3013 3938 3488 
-Q 4275 3569 4638 3644 
-Q 4925 3719 4969 3756 
-Q 5031 3813 5000 3869 
-Q 4944 3950 4750 3994 
-Q 4544 4031 4344 3950 
-Q 4150 3888 3956 3813 
-Q 3981 4338 4113 4956 
-Q 4138 5031 4000 5138 
-Q 3756 5269 3594 5294 
-Q 3481 5319 3425 5263 
-Q 3369 5206 3431 5106 
-Q 3588 4875 3588 4719 
-Q 3613 4244 3613 3713 
-Q 3219 3631 2788 3575 
-Q 2538 3531 2719 3419 
-Q 3019 3269 3388 3369 
-Q 3481 3394 3613 3413 
-Q 3606 2963 3581 2469 
-Q 2938 2369 2219 2238 
-Q 2100 2219 2194 2119 
-Q 2275 2038 2388 2013 
-Q 2519 1988 2613 2019 
-Q 2950 2131 3325 2200 
-Q 3325 1725 2806 1144 
-Q 2650 950 2325 781 
-Q 2131 700 2131 625 
-Q 2125 506 2200 363 
-Q 2275 225 2363 188 
-Q 2419 163 2494 206 
-Q 3113 606 4525 963 
-Q 4563 969 4600 981 
-z
-" transform="scale(0.015625)"/>
-      <path id="UKaiCN-6d41" d="M 1488 4219 
-Q 1644 4069 1806 3900 
-Q 1900 3800 2013 3806 
-Q 2094 3813 2125 3906 
-Q 2163 4006 2100 4225 
-Q 2063 4344 1869 4438 
-Q 1381 4625 1300 4569 
-Q 1263 4544 1275 4450 
-Q 1300 4369 1488 4219 
-z
-M 925 3088 
-Q 1206 2763 1406 2681 
-Q 1506 2663 1569 2756 
-Q 1606 2838 1588 2950 
-Q 1544 3106 1425 3194 
-Q 1081 3400 850 3363 
-Q 831 3363 831 3356 
-Q 788 3350 806 3263 
-Q 813 3181 925 3088 
-z
-M 3638 4863 
-Q 3806 4725 3981 4569 
-Q 4081 4488 4194 4494 
-Q 4275 4500 4300 4600 
-Q 4325 4713 4250 4919 
-Q 4206 5038 4000 5113 
-Q 3525 5244 3425 5194 
-Q 3388 5169 3406 5075 
-Q 3431 4994 3638 4863 
-z
-M 950 963 
-Q 869 944 888 831 
-Q 963 381 1194 250 
-Q 1238 206 1306 225 
-Q 1350 231 1356 394 
-Q 1381 644 2006 2300 
-Q 2050 2400 2044 2438 
-Q 2038 2500 1981 2456 
-Q 1906 2400 1200 1238 
-Q 1119 1100 950 963 
-z
-M 4550 2925 
-Q 4631 2825 4725 2700 
-Q 4788 2600 4894 2588 
-Q 4956 2581 5006 2656 
-Q 5050 2738 5031 2938 
-Q 4994 3188 4388 3463 
-Q 4294 3506 4250 3494 
-Q 4213 3475 4213 3394 
-L 4456 3050 
-Q 3888 2950 3313 2838 
-Q 3269 2819 3256 2838 
-Q 3250 2844 3275 2888 
-Q 3656 3456 3813 3600 
-Q 3894 3694 3838 3744 
-Q 3800 3788 3719 3813 
-Q 4269 3925 4863 4019 
-Q 5256 4100 5313 4156 
-Q 5369 4200 5344 4250 
-Q 5300 4325 5125 4375 
-Q 4956 4413 4275 4206 
-Q 3206 3994 2663 3944 
-Q 2438 3919 2594 3813 
-Q 2838 3644 3200 3731 
-Q 3263 3750 3344 3750 
-Q 3400 3638 3300 3381 
-Q 3075 2950 2725 2738 
-Q 2494 2638 2631 2381 
-Q 2694 2263 2775 2238 
-Q 2819 2219 2888 2256 
-Q 3381 2594 4488 2913 
-Q 4513 2919 4550 2925 
-z
-M 2644 1919 
-Q 2763 1600 2500 969 
-Q 2456 856 2381 738 
-Q 2263 531 1969 331 
-Q 1888 275 1856 250 
-Q 1838 213 1906 206 
-Q 2044 181 2363 369 
-Q 2738 650 3050 1700 
-Q 3094 1800 3000 1875 
-Q 2769 2050 2688 2050 
-Q 2588 2050 2644 1919 
-z
-M 3431 2006 
-Q 3581 1613 3450 694 
-Q 3394 506 3556 313 
-Q 3600 250 3663 313 
-Q 3781 500 3775 738 
-Q 3738 1375 3825 1800 
-Q 3825 1819 3831 1831 
-Q 3869 1950 3763 2019 
-Q 3669 2081 3581 2131 
-Q 3519 2156 3456 2125 
-Q 3413 2088 3431 2006 
-z
-M 4344 1806 
-Q 4306 825 4394 550 
-Q 4419 431 4525 338 
-Q 4938 19 5700 163 
-Q 5719 181 5756 181 
-Q 5931 238 6106 369 
-Q 6219 450 6144 600 
-Q 6069 738 5975 1194 
-Q 5969 1288 5931 1313 
-Q 5894 1331 5869 1231 
-Q 5719 744 5619 600 
-Q 5575 538 5438 500 
-Q 5100 425 4831 544 
-Q 4619 675 4600 1113 
-Q 4600 1550 4688 2113 
-Q 4713 2225 4638 2281 
-Q 4556 2363 4413 2413 
-Q 4331 2438 4281 2406 
-Q 4238 2381 4275 2275 
-Q 4356 2031 4344 1806 
-z
-" transform="scale(0.015625)"/>
-      <path id="UKaiCN-7a0b" d="M 1819 3056 
-Q 1463 2225 438 1338 
-Q 375 1263 425 1256 
-Q 481 1231 544 1269 
-Q 1219 1569 1888 2556 
-Q 1888 1781 1738 869 
-Q 1638 431 1981 75 
-Q 1981 69 2000 56 
-Q 2081 50 2113 138 
-Q 2194 350 2175 550 
-Q 2156 1825 2181 2881 
-Q 2181 3019 2181 3150 
-Q 2488 3231 2881 3306 
-Q 2994 3331 2994 3375 
-Q 2994 3456 2875 3513 
-Q 2688 3588 2194 3438 
-Q 2213 3838 2250 4031 
-Q 2269 4113 2219 4150 
-Q 2125 4231 2044 4281 
-Q 2550 4475 2819 4519 
-Q 2919 4519 2950 4563 
-Q 2975 4625 2906 4706 
-Q 2544 4988 2331 4969 
-Q 2288 4950 2281 4881 
-Q 2244 4600 956 4100 
-Q 931 4044 963 4025 
-Q 1019 4006 1631 4169 
-Q 1713 4194 1825 4213 
-Q 1881 4100 1913 3363 
-Q 800 3094 519 3050 
-Q 438 3044 425 2988 
-Q 406 2925 506 2850 
-Q 769 2681 1031 2781 
-Q 1481 2956 1819 3056 
-z
-M 2375 2300 
-Q 2525 2200 2688 2063 
-Q 2769 2000 2856 2019 
-Q 2913 2025 2931 2100 
-Q 2950 2181 2881 2338 
-Q 2806 2506 2313 2550 
-Q 2231 2556 2200 2544 
-Q 2175 2519 2188 2450 
-Q 2213 2394 2375 2300 
-z
-M 3788 3294 
-Q 3831 3288 3900 3294 
-Q 4275 3375 5075 3425 
-Q 5138 3431 5144 3481 
-Q 5144 3525 5025 3606 
-Q 5181 4113 5350 4250 
-Q 5519 4406 5369 4513 
-Q 5250 4594 5081 4731 
-Q 4963 4813 4831 4750 
-Q 4400 4544 3600 4475 
-Q 3538 4519 3300 4550 
-Q 3225 4575 3206 4538 
-Q 3163 4500 3219 4400 
-Q 3394 4056 3500 3500 
-Q 3525 3331 3625 3219 
-Q 3738 3081 3769 3181 
-Q 3775 3225 3788 3294 
-z
-M 3775 3488 
-Q 3719 3656 3650 4300 
-Q 3688 4300 3738 4306 
-Q 4175 4388 4538 4450 
-Q 4788 4494 4844 4394 
-Q 4888 4350 4825 4138 
-Q 4763 3913 4681 3650 
-Q 4169 3550 3775 3488 
-z
-M 4019 913 
-Q 3344 831 2581 744 
-Q 2444 738 2544 619 
-Q 2638 525 2750 494 
-Q 2888 450 2994 481 
-Q 3988 725 5725 719 
-Q 5825 719 5931 713 
-Q 6063 713 6094 769 
-Q 6131 844 6025 931 
-Q 5688 1194 5444 1138 
-Q 5006 1056 4294 944 
-Q 4313 1338 4331 1669 
-Q 4481 1706 5206 1788 
-Q 5269 1781 5331 1863 
-Q 5338 1938 5194 2000 
-Q 5000 2138 4444 1975 
-Q 4400 1969 4350 1950 
-Q 4356 2063 4363 2156 
-Q 4388 2438 4363 2475 
-Q 4281 2556 4200 2613 
-Q 4931 2788 5069 2794 
-Q 5169 2788 5194 2831 
-Q 5219 2888 5163 2963 
-Q 5063 3063 4819 3200 
-Q 4738 3256 4663 3256 
-Q 4619 3250 4606 3181 
-Q 4569 2931 3113 2519 
-Q 3075 2475 3106 2450 
-Q 3200 2425 3838 2544 
-Q 3881 2550 3931 2556 
-Q 3988 2463 4019 1969 
-Q 4013 1931 4019 1888 
-Q 3719 1850 3175 1781 
-Q 3000 1756 3138 1650 
-Q 3306 1500 3613 1544 
-Q 3788 1581 4019 1619 
-Q 4019 1338 4019 913 
-z
-" transform="scale(0.015625)"/>
-     </defs>
-     <use xlink:href="#UKaiCN-4f"/>
-     <use xlink:href="#UKaiCN-50" transform="translate(50 0)"/>
-     <use xlink:href="#UKaiCN-54" transform="translate(100.78125 0)"/>
-     <use xlink:href="#UKaiCN-34" transform="translate(150.78125 0)"/>
-     <use xlink:href="#UKaiCN-43" transform="translate(200.78125 0)"/>
-     <use xlink:href="#UKaiCN-20" transform="translate(250.78125 0)"/>
-     <use xlink:href="#UKaiCN-6c42" transform="translate(300.78125 0)"/>
-     <use xlink:href="#UKaiCN-89e3" transform="translate(400.78125 0)"/>
-     <use xlink:href="#UKaiCN-5668" transform="translate(500.78125 0)"/>
-     <use xlink:href="#UKaiCN-7b97" transform="translate(600.78125 0)"/>
-     <use xlink:href="#UKaiCN-6cd5" transform="translate(700.78125 0)"/>
-     <use xlink:href="#UKaiCN-6d41" transform="translate(800.78125 0)"/>
-     <use xlink:href="#UKaiCN-7a0b" transform="translate(900.78125 0)"/>
-    </g>
-   </g>
   </g>
  </g>
  <defs>
-  <clipPath id="p7e84cebd39">
-   <rect x="3.6" y="17.361094" width="390.6" height="304.92"/>
+  <clipPath id="p3a2e729286">
+   <rect x="3.6" y="3.6" width="390.6" height="304.92"/>
   </clipPath>
  </defs>
 </svg>
