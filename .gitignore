@@ -79,6 +79,7 @@ env/
 *.aux
 *.bbl
 *.blg
+*.log
 *.toc
 *.out
 *.run.xml

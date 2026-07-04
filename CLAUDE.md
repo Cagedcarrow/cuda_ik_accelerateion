@@ -8,7 +8,7 @@ CUDA-accelerated batch inverse kinematics (IK) solver for UR10 6-DOF manipulator
 
 **Current method: OPT4C (CUDA-V4-Final-K16)** = Analytical Jacobian + Levenberg-Marquardt + Sobol-K16 seeds + Limit Barrier + Smoothness Rerank + target-block seed-parallel mapping + fused in-block candidate selection.
 
-The main project lives in `standard_robot_cuda_ik/`. Historical code, experiments, and paper drafts are archived in `history/` — see `history/README.md` for a detailed manifest.
+> **主线**: `standard_robot_cuda_ik/` 是唯一活跃项目。`history/` 目录下为历史版本归档，仅供参考，不作为开发依据。
 
 ## Build
 
@@ -136,6 +136,18 @@ Key flags:
 - `tools/fetch_official_ur10.py` — Fetch/clone official UR10 URDF from UniversalRobots repo
 - `tools/verify_official_ur10.py` — FK verification against official model using yourdfpy
 
+## Paper
+
+论文源文件位于 `论文/`：
+- `paper.tex` — LaTeX 源文件（xelatex 编译）
+- `paper.pdf` — 编译后 PDF
+- `paper.md` — Markdown 格式（含嵌入图片）
+- `基于 CUDA 小矩阵加速的机械臂批量逆运动学求解.pdf` — 最终输出 PDF
+- `绘图/` — 全部 7 张图片（PDF + SVG + draw.io 源文件）
+- `计划/` — 审稿意见
+
+编译：`cd 论文 && latexmk -xelatex paper.tex`（或使用 `.latexmkrc` 自动配置）。
+
 ## External Reference Solvers
 
 Cloned under `external/` for source-code reading only (not built or run):
@@ -151,6 +163,8 @@ Cloned under `external/` for source-code reading only (not built or run):
 4. **No cuBLAS/cuSOLVER**: 6×6 linear systems are too small for library overhead. Hand-rolled Gaussian elimination with partial pivoting in registers.
 5. **Sobol K=16 seeds**: Low-discrepancy sequences provide better IK coverage than random/grid sampling with fewer seeds.
 
-## Historical Code
+## Historical Code (仅供参考)
 
-All previous solver generations (DLS A0-A8 ablation, V2 analytical Jacobian experiment, V3 Python LM prototype, V4 Python prototype, pre-OPT4C CUDA port) are archived in `history/`. See `history/README.md` for the full manifest and version timeline.
+所有历史版本（DLS A0-A8 消融、V2 解析雅可比实验、V3 Python LM 原型、V4 Python 原型、pre-OPT4C CUDA 移植）已归档至 `history/`。详见 `history/README.md`。
+
+> ⚠️ **历史代码不作为开发依据。** 当前活跃开发仅针对 `standard_robot_cuda_ik/` 中的 OPT4C 求解器。历史代码中的实验数据（A0-A8 CSVs、旧 NCU 报告）使用不同的算法（数值 Jacobian DLS）和评价协议，不可直接与当前 OPT4C 结果混用。

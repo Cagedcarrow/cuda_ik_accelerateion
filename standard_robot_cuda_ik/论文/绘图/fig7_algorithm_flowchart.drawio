@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<mxfile host="drawio" modified="2026-07-04T00:00:00.000Z" agent="python" version="21.0.0" type="device">
+  <diagram name="Page-1" id="page1">
+    <mxGraphModel dx="1200" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        <mxCell id="cell1" value="输入: N 个目标位姿 T*, K=16 Sobol 种子 q₀" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#009E73;strokeColor=#333333;strokeWidth=1;fontColor=#FFFFFF;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="320" y="20" width="360" height="45" as="geometry"/>
+        </mxCell>
+        <mxCell id="cell2" value="CUDA Grid Launch: <<<N, 32>>>" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0072B2;strokeColor=#333333;strokeWidth=1;fontColor=#FFFFFF;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="300" y="85" width="400" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="cell3" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#555555;strokeWidth=1.5;endArrow=block;endFill=1;" edge="1" parent="1" source="cell1" target="cell2">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="cell4" value="Block i: Global Memory → 加载 T*_i 和 seed[0..15]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#56B4E9;strokeColor=#333333;strokeWidth=1;fontColor=#FFFFFF;fontSize=10;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="280" y="150" width="440" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="cell5" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#555555;strokeWidth=1.5;endArrow=block;endFill=1;" edge="1" parent="1" source="cell2" target="cell4">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="cell6" value="16 Lanes 并行: 每个 Lane 执行 LM 迭代求解 (max 60 iters)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#0072B2;strokeColor=#333333;strokeWidth=1;fontColor=#FFFFFF;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="250" y="215" width="500" height="45" as="geometry"/>
+        </mxCell>
+        <mxCell id="cell7" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#555555;strokeWidth=1.5;endArrow=block;endFill=1;" edge="1" parent="1" source="cell4" target="cell6">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="cell8" value="LM 迭代循环:
+1. FK with frames → T, p_joint, z_axis
+2. 解析 Jacobian: Jv = z×(p_ee−p_joint)
+3. Hessian H = JᵀJ + λI
+4. Gauss Elim 6×6 → Δq
+5. λ 自适应缩放 (×0.5 或 ×2)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#56B4E9;strokeColor=#333333;strokeWidth=1;fontColor=#333333;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="50" y="285" width="370" height="90" as="geometry"/>
+        </mxCell>
+        <mxCell id="cell9" value="Loss 评估与更新:
+- Pose cost = ‖e_p‖² + ‖e_R‖²
+- Limit barrier penalty
+- Total loss = 0.5·pose + w·barrier
+- q ← q + Δq (总是接受 trial)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#56B4E9;strokeColor=#333333;strokeWidth=1;fontColor=#333333;fontSize=9;" vertex="1" parent="1">
+          <mxGeometry x="580" y="285" width="370" height="90" as="geometry"/>
+        </mxCell>
+        <mxCell id="cell10" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#555555;strokeWidth=1.5;endArrow=block;endFill=1;" edge="1" parent="1" source="cell6" target="cell8">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="cell11" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#555555;strokeWidth=1.5;endArrow=block;endFill=1;" edge="1" parent="1" source="cell6" target="cell9">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="cell12" value="收敛?
+(pos < 5mm & rot < 1°)" style="rhombus;whiteSpace=wrap;html=1;fillColor=#E69F00;strokeColor=#333333;strokeWidth=1;fontColor=#FFFFFF;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="350" y="400" width="280" height="65" as="geometry"/>
+        </mxCell>
+        <mxCell id="cell13" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#555555;strokeWidth=1.5;endArrow=block;endFill=1;" edge="1" parent="1" source="cell8" target="cell12">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="cell14" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#555555;strokeWidth=1.5;endArrow=block;endFill=1;" edge="1" parent="1" source="cell9" target="cell12">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="cell15" value="No → 继续迭代" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=8;fontColor=#D55E00;" vertex="1" parent="1">
+          <mxGeometry x="660" y="405" width="80" height="30" as="geometry"/>
+        </mxCell>
+        <mxCell id="cell16" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#555555;strokeWidth=1.5;endArrow=block;endFill=1;" edge="1" parent="1" source="cell12" target="cell15">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="cell17" value="16 个候选解写入 Shared Memory s_cand[16][kCandidateStride]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#009E73;strokeColor=#333333;strokeWidth=1;fontColor=#FFFFFF;fontSize=10;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="280" y="495" width="440" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="cell18" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#555555;strokeWidth=1.5;endArrow=block;endFill=1;" edge="1" parent="1" source="cell12" target="cell17">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="cell19" value="Lane 0: 块内候选选择 (Success Rank → Near-Limit → Pose Cost)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#E69F00;strokeColor=#333333;strokeWidth=1;fontColor=#FFFFFF;fontSize=10;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="280" y="560" width="440" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="cell20" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#555555;strokeWidth=1.5;endArrow=block;endFill=1;" edge="1" parent="1" source="cell17" target="cell19">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="cell21" value="best[i] 写入 Global Memory [q₀..₅, pos, rot, cost, rank]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#56B4E9;strokeColor=#333333;strokeWidth=1;fontColor=#333333;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="280" y="625" width="440" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="cell22" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#555555;strokeWidth=1.5;endArrow=block;endFill=1;" edge="1" parent="1" source="cell19" target="cell21">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="cell23" value="输出: N × 18 best 解 [q, pos_err, rot_err, cost, rank]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#D55E00;strokeColor=#333333;strokeWidth=1;fontColor=#FFFFFF;fontSize=11;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="300" y="690" width="400" height="45" as="geometry"/>
+        </mxCell>
+        <mxCell id="cell24" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#555555;strokeWidth=1.5;endArrow=block;endFill=1;" edge="1" parent="1" source="cell21" target="cell23">
+          <mxGeometry relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="cell25" value="每个 Block
+处理 1 个
+Target 的
+16 个种子
+
+单 Kernel
+零调度开销
+无额外筛选
+Kernel Launch" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=9;fontColor=#0072B2;" vertex="1" parent="1">
+          <mxGeometry x="830" y="190" width="150" height="120" as="geometry"/>
+        </mxCell>
+        <mxCell id="cell26" value="FP64 精度
+寄存器级
+6×6 高斯消元
+Shared Memory
+无 Bank 冲突" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=9;fontColor=#009E73;" vertex="1" parent="1">
+          <mxGeometry x="830" y="500" width="150" height="90" as="geometry"/>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
