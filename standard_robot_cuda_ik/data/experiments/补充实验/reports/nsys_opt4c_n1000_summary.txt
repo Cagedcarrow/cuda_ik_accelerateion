@@ -1,0 +1,15 @@
+# Nsight Systems OPT4C N=1000 K=16 摘要
+
+- report: `nsys_opt4c_n1000.sqlite`
+- kernel_name: `rtfg::cuda::ik_lm_multiseed_v4_block_target_kernel(const double *, const double *, double *, int, int, int, int, int, int, int *)`
+- kernel_instances: 40
+- kernel_avg_ms: 57.955946
+- kernel_min_ms: 57.177750
+- kernel_max_ms: 65.893417
+- memcpy_count: 167
+- memcpy_total_ms: 5.236093
+- memset_count: 40
+- memset_total_ms: 0.024801
+- figure: `fig_nsys_timeline_opt4c.pdf`
+
+说明：本次采样命令包含 `warmup=10, repeat=30`，因此核心 IK kernel 共 40 次。采样时系统不允许 CPU context switch tracing；CUDA kernel、memcpy 和 memset timeline 已成功采集。

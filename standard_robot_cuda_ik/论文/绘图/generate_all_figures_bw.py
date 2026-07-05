@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate all 7 figures in B&W with marker differentiation for journal publication.
+"""Generate all data figures in color with marker differentiation for journal publication.
 Data-driven: reads from CSV result files."""
 
 import matplotlib
@@ -11,7 +11,7 @@ import numpy as np
 import csv, os, sys
 from pathlib import Path
 
-# === B&W Journal Config (Chinese, 6pt figure text per journal spec) ===
+# === Color journal config (Chinese, 6pt figure text per journal spec) ===
 plt.rcParams.update({
     'font.family': 'sans-serif',
     'font.sans-serif': ['Noto Sans CJK SC', 'AR PL UKai CN', 'DejaVu Sans'],
@@ -30,13 +30,19 @@ plt.rcParams.update({
     'lines.markersize': 5,
 })
 
-# B&W scheme: distinguish by marker shape + line style, not color
-CUDA_STYLE = dict(color='black', marker='o', linestyle='-',  linewidth=1.5, markersize=6,
-                  markerfacecolor='white', markeredgewidth=1.2, markeredgecolor='black', label='CUDA OPT4C')
-CUROBO_STYLE = dict(color='#333333', marker='^', linestyle='--', linewidth=1.5, markersize=7,
-                    markerfacecolor='#555555', markeredgewidth=1.0, markeredgecolor='#333333', label='cuRobo-Graph')
-CUDA_FILL = dict(color='black', marker='s', linestyle='-', linewidth=1.5, markersize=6,
-                 markerfacecolor='#888888', markeredgewidth=1.0, markeredgecolor='black')
+COLOR_BLUE = '#1f77b4'
+COLOR_ORANGE = '#ff7f0e'
+COLOR_GREEN = '#2ca02c'
+COLOR_RED = '#d62728'
+COLOR_CYAN = '#17becf'
+COLOR_PURPLE = '#9467bd'
+
+CUDA_STYLE = dict(color=COLOR_BLUE, marker='o', linestyle='-',  linewidth=1.8, markersize=6,
+                  markerfacecolor=COLOR_BLUE, markeredgewidth=0.8, markeredgecolor='white', label='OPT4C-K16')
+CUROBO_STYLE = dict(color=COLOR_RED, marker='^', linestyle='--', linewidth=1.8, markersize=7,
+                    markerfacecolor=COLOR_RED, markeredgewidth=0.8, markeredgecolor='white', label='cuRobo-Graph-K1')
+CUDA_FILL = dict(color=COLOR_ORANGE, marker='s', linestyle='-', linewidth=1.8, markersize=6,
+                 markerfacecolor=COLOR_ORANGE, markeredgewidth=0.8, markeredgecolor='white')
 
 OUTDIR = os.path.dirname(os.path.abspath(__file__))
 RESULTS_DIR = os.path.join(OUTDIR, '..', 'results')
@@ -121,10 +127,10 @@ def load_curobo_data():
 
 def _fallback_curobo():
     """Use existing known data points and interpolate."""
-    cu_N = np.array([100, 500, 1000, 5000])
-    cu_tp = np.array([10508.7, 41815.6, 64928.2, 137148.3])
-    cu_sr = np.array([0.870, 0.836, 0.840, 0.844])
-    cu_p95 = np.array([74.32, 115.64, 98.92, 75.05])
+    cu_N = np.array([100, 200, 300, 400, 500, 600, 700, 800, 900, 1000])
+    cu_tp = np.array([10382.3, 20171.3, 30449.4, 36538.8, 43497.9, 49493.5, 55198.9, 61128.0, 64904.7, 72624.3])
+    cu_sr = np.array([0.860, 0.875, 0.880, 0.830, 0.838, 0.843, 0.844, 0.839, 0.839, 0.840])
+    cu_p95 = np.array([74.17, 89.07, 84.71, 100.53, 114.46, 105.65, 88.01, 92.06, 105.29, 88.67])
     # Return raw arrays, caller handles interpolation
     return cu_N, cu_tp, cu_sr, cu_p95
 
@@ -147,16 +153,8 @@ def fig1():
     ax.set_yscale('log')
     ax.legend(frameon=False, loc='upper left')
 
-    # Annotate key points
-    for n, tp_c, tp_cu in zip(cuda_N, cuda_tp, curobo_tp_interp):
-        if n in [100, 500, 1000]:
-            ax.annotate(f'{tp_c:.0f}', (n, tp_c), textcoords="offset points",
-                       xytext=(0, 10), fontsize=6, ha='center', color='black')
-            ax.annotate(f'{tp_cu:.0f}', (n, tp_cu), textcoords="offset points",
-                       xytext=(0, -14), fontsize=6, ha='center', color='#333333')
-
     ax.spines[['top', 'right']].set_visible(False)
-    ax.set_title('CUDA OPT4C 与 cuRobo-Graph 批量吞吐量对比', fontsize=9, pad=6)
+    ax.set_title('默认配置批量吞吐量对比', fontsize=9, pad=6)
     save(fig, 'fig1_throughput')
     plt.close()
 
@@ -178,7 +176,7 @@ def fig2():
     ax.legend(frameon=False, loc='lower left')
 
     ax.spines[['top', 'right']].set_visible(False)
-    ax.set_title('Strict 成功率对比 (5 mm / 1°)', fontsize=9, pad=6)
+    ax.set_title('默认配置 Strict 成功率对比 (5 mm / 1°)', fontsize=9, pad=6)
     save(fig, 'fig2_strict_sr')
     plt.close()
 
@@ -199,8 +197,8 @@ def fig3():
     ax.legend(frameon=False, loc='upper left')
 
     # Strict threshold line (black dotted)
-    ax.axhline(y=5, color='black', linestyle=':', lw=1.0, alpha=0.6)
-    ax.text(cuda_N[-1] + 20, 5.5, 'Strict 阈值 (5 mm)', fontsize=6, color='black',
+    ax.axhline(y=5, color=COLOR_GREEN, linestyle=':', lw=1.2, alpha=0.8)
+    ax.text(cuda_N[-1] + 20, 5.5, 'Strict 阈值 (5 mm)', fontsize=6, color=COLOR_GREEN,
             ha='right', alpha=0.7)
 
     ax.spines[['top', 'right']].set_visible(False)
@@ -215,19 +213,17 @@ def fig4():
 
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(fig_width_full_in, 2.8))
 
-    # Left: Throughput vs N
-    ax1.plot(cuda_N, cuda_tp, color='black', marker='o', linestyle='-',
-             lw=1.5, markersize=5, markerfacecolor='white', markeredgecolor='black',
-             markeredgewidth=1.2)
+    ax1.plot(cuda_N, cuda_tp, color=COLOR_BLUE, marker='o', linestyle='-',
+             lw=1.8, markersize=5, markerfacecolor=COLOR_BLUE, markeredgecolor='white',
+             markeredgewidth=0.8)
     ax1.set_xlabel('批量规模 N')
     ax1.set_ylabel('吞吐量 / (targets·s⁻¹)')
     ax1.tick_params(axis='y')
     ax1.spines[['top', 'right']].set_visible(False)
 
-    # Right: GPU time vs N
-    ax2.plot(cuda_N, cuda_gpu, color='black', marker='s', linestyle='-',
-             lw=1.5, markersize=5, markerfacecolor='#888888', markeredgecolor='black',
-             markeredgewidth=1.2)
+    ax2.plot(cuda_N, cuda_gpu, color=COLOR_ORANGE, marker='s', linestyle='-',
+             lw=1.8, markersize=5, markerfacecolor=COLOR_ORANGE, markeredgecolor='white',
+             markeredgewidth=0.8)
     ax2.set_xlabel('批量规模 N')
     ax2.set_ylabel('GPU 流时间 / ms')
     ax2.tick_params(axis='y')
@@ -269,8 +265,7 @@ def fig5():
 
     labels = ['Kernel (LM+Jacoib)', 'H2D 传输', 'D2H 传输', '核函数启动']
     sizes = [kernel_mean, h2d_mean, d2h_mean_val, launch_overhead]
-    # 4-level grayscale
-    colors = ['#333333', '#888888', '#BBBBBB', '#DDDDDD']
+    colors = [COLOR_BLUE, COLOR_CYAN, COLOR_GREEN, COLOR_ORANGE]
     explode = (0.04, 0, 0, 0)
 
     wedges, texts, autotexts = ax.pie(sizes, explode=explode, labels=None, colors=colors,
@@ -287,7 +282,7 @@ def fig5():
     plt.close()
 
 
-print("Generating B&W data figures (fig1-fig5)...")
+print("Generating color data figures (fig1-fig5)...")
 fig1(); fig2(); fig3(); fig4(); fig5()
 
 # =====================================================================

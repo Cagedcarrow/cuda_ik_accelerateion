@@ -93,10 +93,10 @@ data/
 ```
 论文/
 ├── paper.tex           # Final LaTeX source
-├── paper.pdf           # Compiled PDF (10 pages)
+├── paper.pdf           # Compiled PDF (11 pages)
 ├── paper.txt           # Plain text for plagiarism check
 ├── .latexmkrc          # Force xelatex
-├── 绘图/               # 6 figures (PDF + SVG + draw.io sources)
+├── 绘图/               # 5 figures (PDF + SVG + draw.io, bilingual captions)
 ├── 格式模板/           # Journal formatting reference
 ├── 计划/               # Reviewer comments + revision strategy
 └── 名词解释/           # 47 technical terms glossary (CUDA/Robotics/Numerical)
