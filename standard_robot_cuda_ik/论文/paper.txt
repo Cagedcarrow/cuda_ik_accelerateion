@@ -1,189 +1,2657 @@
-系统工程与电子技术
 Systems Engineering and Electronics
 
-font=small,labelfont=bf,labelsep=quad
-SE
-绘图/
-[
-结构感知单核融合的机械臂批量逆运动学 CUDA 加速方法4mm
-刘霄鹏1mm
-武汉科技大学 机械工程学院，武汉 4300813mm
-文章编号：（预留）DOI：（预留）2mm
-摘　要： 针对机械臂批量逆运动学（inverse kinematics，IK）中单种子优化器收敛概率不足与 GPU 多 Kernel 调度开销过高的双重瓶颈，提出一种硬件固化的 Sobol 多起点并行 IK 加速方法。核心设计为：将  组 Sobol 低差异序列种子固化于单一 CUDA 核函数内，16 条线程经线并行执行独立 LM 迭代并在共享内存中完成块内候选选择——无论种子数  取何值，核函数启动次数恒为 1，调度开销  GPU 流时间。在 NVIDIA GeForce RTX 4060 Laptop GPU（SM 8.9）上， 范围内吞吐量为  targets/s，Strict 成功率（位置误差  mm 且姿态误差 ）达 0.940-0.960，全样本位置误差  为 4.34-5.49 mm。消融实验揭示：将  从 16 降至 1 后，吞吐量仅提升约 35%（），但 Strict 成功率从 0.954 骤降至 0.522， 从 4.6 mm 飙升至 685 mm——证实本方法的成功率几乎完全来源于 Sobol 多起点策略而非单一 LM 优化器的收敛能力。同等 16 种子公平对比下，cuRobo Strict 成功率达 0.988、 为 0.9 mm——L-BFGS 优化器收敛质量更优；但本方法吞吐量为其 1.7 倍（ vs  targets/s）——Kernel Fusion 消除了多阶段流水线调度开销。三方对比揭示清晰的帕累托前沿：cuRobo K=16 为质量天花板（SR 0.988），本方法 K=16 为吞吐优先且满足 Strict 阈值（SR 0.954），cuRobo K=1 为极端吞吐但质量不可用（SR 0.840）。PTX 分析确认核函数为 FP64 计算密集型（194 寄存器/线程，共享内存 Bank 冲突为零）。该结果确立了小矩阵批量计算中硬件-算法协同设计优于通用优化器流水线的结构性优势。2mm
-关键词： 逆运动学；CUDA 小矩阵加速；Sobol 多种子策略；Kernel Fusion；消融实验中图分类号： TP391.4文献标志码： A收稿日期：（预留）；修回日期：（预留）。]
-Structure-Aware Single-Kernel Fusion CUDA Acceleration
- for Batch Inverse Kinematics of Robotic Manipulators
-LIU XiaopengSchool of Mechanical Engineering, Wuhan University of Science and Technology, Wuhan 430081, China
-Abstract: Batch inverse kinematics (IK) for robotic manipulators faces a dual bottleneck: single-seed optimizers suffer from low convergence probability on non-convex problems, while multi-kernel GPU pipelines incur excessive scheduling overhead. This paper proposes a hardware-fused Sobol multi-start parallel IK acceleration method. The core design hard-codes  Sobol low-discrepancy seeds into a single CUDA kernel: 16 thread lanes execute independent LM iterations in parallel, with in-block candidate selection completed entirely in shared memory-regardless of , the kernel launch count remains exactly 1, keeping scheduling overhead below 0.01% of GPU stream time. On an NVIDIA RTX 4060 Laptop GPU (SM 8.9), the method achieves  targets/s for , with Strict success rate (position  mm, orientation ) of 0.940-0.960 and all-target position-error  of 4.34-5.49 mm. An ablation study reveals the decisive role of the multi-start strategy: reducing  from 16 to 1 improves throughput by only 35% () but causes Strict SR to collapse from 0.954 to 0.522 and  to surge from 4.6 mm to 685 mm-confirming that the method's high success rate stems from the Sobol multi-start strategy rather than the LM optimizer itself. Under equal 16-seed fair comparison, cuRobo achieves higher Strict SR (0.988) and lower  (0.9 mm)-its L-BFGS optimizer converges more accurately; however, the proposed method delivers 1.7 higher throughput ( vs  targets/s)-kernel fusion eliminates multi-stage pipeline overhead. A three-way comparison reveals a clear Pareto frontier: cuRobo K=16 as the quality ceiling (SR 0.988), the proposed method K=16 as throughput-prioritized while satisfying the Strict threshold (SR 0.954), and cuRobo K=1 as extreme throughput with unacceptable quality (SR 0.840). PTX analysis confirms the kernel is FP64 compute-bound (194 registers/thread) with zero shared-memory bank conflicts. These results establish the structural advantage of hardware-algorithm co-design over general-purpose optimizer pipelines for small-matrix batch computation.
-Keywords: inverse kinematics; CUDA small-matrix acceleration; analytical Jacobian; Levenberg-Marquardt; kernel fusion
-引 言
-机械臂批量逆运动学（inverse kinematics，IK）是采样式运动规划、轨迹优化和机器人学习中的核心计算环节。对 6 自由度串联机械臂而言，单个 IK 问题规模极小： 雅可比矩阵、6 维线性系统、每迭代约 1 650 次双精度浮点运算。然而，当批量规模  达到数百至数千时，计算范式发生根本转变——问题从"单个 6 维非线性最小二乘"变为" 个独立  小矩阵运算的批量并行调度问题"。在这一范式下，GPU 的固定调度开销（kernel launch - s/次）和主机-设备同步延迟可能主导实际性能，形成小矩阵批量计算的结构性矛盾：每个子问题计算量极小（不足以摊薄调度开销），但子问题数量足够多（可用并行性充足）。
-这一矛盾并非 IK 特有，而是广泛存在于机器人学中任何涉及固定小规模线性代数批量计算的场景。现有 GPU 库对小矩阵支持不足：NVIDIA cuBLAS 批量 GEMM 接口（cublasGemmBatchedEx）设计目标为 ，对  规模存在  s/次的固定调用开销；cuSOLVER 批量 LU/QR 分解同理。传统 CPU 求解器中，KDL 基于 Newton-Raphson 迭代收敛稳定但每目标耗时毫秒级，TRAC-IK 结合 SQP 非线性优化在失败恢复方面有所改进。在 GPU 加速领域，cuRobo 采用 CUDA Graph 和粒子群-L-BFGS 优化器实现大规模并行 IK，但其默认单种子配置并非为  固定规模下的极致效率设计。本文的核心命题是：针对  这一固定且极小的矩阵规模，将运动学结构信息编码为编译期常量并融合为单核函数后，能否将批量 IK 的调度开销压缩至可忽略量级？
-本文提出运动学结构驱动的 CUDA 小矩阵加速方法，简称 OPT4C。其核心不是将已有算法库移植至 GPU，而是将运动学结构信息（关节轴方向、解析几何关系、固定 Sobol 种子数 ）作为编译期常量编码进核函数，使 FK、雅可比组装、LM 迭代更新与块内候选筛选全部在单一 kernel 内完成。本文在 NVIDIA GeForce RTX 4060 Laptop GPU 上对方法进行了全面的实验验证和微架构分析。
-本文方法的应用场景界定为：批量目标数  在数百量级（）、机械臂构型固定为 6-DOF 的实时规划前端。在此场景下，GPU 调度开销是主要瓶颈；当  继续增大时，计算吞吐将受限于 FP64 管线发射延迟而非调度延迟，届时混合精度加速成为必要路径，本文将其列为后续工作的首要方向。
-问题定义与评价协议
-批量 IK 问题形式化
-令  为 UR10 六个旋转关节角，正运动学  将关节角映射至末端 tool0 位姿。对目标 ，定义平移误差  和旋转误差 。单目标 IK：
-批量 IK 需对  个独立目标并行求解式(1)，输出每目标的最佳候选解。值得注意的是，6-DOF 串联机械臂在关节限位和奇异位形附近存在多解性和可解性退化问题，多种子策略是应对该挑战的有效手段。
-统一评价协议
-  Strict 成功率：同时满足  mm 且  的目标比例；
-  全样本位置误差 ：全部  个目标（含失败）位置误差的 95 分位数；
-  原始吞吐量：， 为 CUDA event 测量的 GPU 流时间均值（30 次重复）。
-运动学结构驱动的 CUDA 小矩阵加速方法
-本章按自底向上的顺序展开：首先将运动学参数编码为 GPU 常量内存，然后设计融合 FK 函数实现解析雅可比的高效组装，接着给出无分支 LM 迭代算法，最后将所有组件融合为单一 target-block 核函数。
-运动学模型至 GPU 常量内存的编译期编码
-UR10 运动学参数来源于官方 URDF 模型。将以下编译期确定的信息编码为 CUDA constant 内存：
-  6 个关节轴单位向量 （）；
-  6 个连杆偏移矩阵 ；
-  腕3至tool0固定变换 ；
-  关节限位  和障碍函数参数。
-Ada Lovelace 架构（SM 8.9）提供 48 KB 常量缓存，所有线程块通过广播总线零延迟访问。这些参数总计约 2 KB——不足缓存容量的 5%，确保运行期间无常量缓存逐出。
+系统工程与电子技术
+
+结构感知单核融合的机械臂批量逆运动学 CUDA 加速方法
+刘霄鹏
+武汉科技大学机械工程学院，武汉 430081
+文章编号：
+（预留）
+
+DOI：
+（预留）
+
+摘 要：针对固定六自由度机械臂中小批量逆运动学（inverse kinematics，IK）求解中单种子收敛稳定性不足、通
+用多阶段图形处理器（graphics processing unit，GPU）流水线固定开销较高的问题，提出一种结构感知单核融合
+的计算统一设备架构（compute unified device architecture，CUDA）加速方法。该方法首先将运动学参数、解析
+雅可比和 Sobol 多起点迭代编码为固定结构；然后采用目标块映射在块内并行评估候选解；最终融合正运动学、雅
+可比组装、正规方程求解和最佳候选输出。实验结果表明，该方法在可达目标批量求解中能够兼顾一次性成功率和
+吞吐量。近奇异、近限位和轨迹实验进一步说明其适合作为规划前端候选生成器。
+关键词：逆运动学；批量并行计算；统一计算设备架构（CUDA）；Levenberg-Marquardt 算法；核函数融合
+中图分类号： TP391.4 文献标志码： A
+收稿日期：（预留）；修回日期：（预留）
+。
+
+Structure-Aware Single-Kernel Fusion CUDA Acceleration for Batch
+Inverse Kinematics of Robotic Manipulators
+LIU Xiaopeng
+School of Mechanical Engineering, Wuhan University of Science and Technology, Wuhan 430081, China
+Abstract: Aiming at the insuﬀicient convergence stability of single-seed inverse kinematics (IK) and the fixed
+overhead of generic multi-stage graphics processing unit (GPU) pipelines for medium-scale batches of fixed sixdegree-of-freedom manipulators, a structure-aware single-kernel fusion acceleration method based on compute
+unified device architecture (CUDA) is proposed. The method first encodes kinematic parameters, analytical
+Jacobian evaluation, and Sobol multi-start iterations as a fixed structure. Then, a target-block mapping evaluates
+candidate solutions in parallel inside each block. Finally, forward kinematics, Jacobian assembly, normal-equation
+solution, and best-solution output are fused. Experiments show that the method balances one-shot success
+rate and throughput for reachable batch targets. Near-singular, near-limit, and trajectory experiments further
+indicate that it is suitable as a candidate generator for planning front-ends.
+Keywords: inverse kinematics; batch parallel computing; compute unified device architecture (CUDA);
+Levenberg-Marquardt algorithm; kernel fusion
+
+0
+
+引言
+
+但子问题数量足够多，可用并行性充足。
+这一矛盾并非 IK 特有，而是广泛存在于机器人学
+
+机械臂批量逆运动学（inverse kinematics，IK）是
+
+中任何涉及固定小规模线性代数批量计算的场景。现
+
+采样式运动规划、轨迹优化和机器人学习中的核心计
+
+有 GPU 库对小矩阵支持不足：NVIDIA cuBLAS 批
+
+算环节 [1, 2, 3, 4]。近年来，向量化采样式规划进一步
+
+量 GEMM 接口（cublasGemmBatchedEx）设计目标
+
+表明，正运动学、碰撞检测和局部 IK 等细粒度子程序
+
+为 m, n, k ≥ 16，对 6 × 6 规模存在 > 10 µs/次的固定
+
+的批量并行化对实时规划前端具有直接价值 [5]。对 6
+
+调用开销；cuSOLVER 批量 LU/QR 分解同理 [6]。小
+
+自由度串联机械臂而言，单个 IK 问题规模极小：6 × 6
+
+矩阵批处理领域已有研究表明，寄存器分块、共享内存
+
+雅可比矩阵、6 维线性系统、每迭代约 1 650 次双精度
+
+常驻和批量调度策略对 tiny matrices 的性能影响显著
+
+浮点运算。然而，当批量规模 N 达到数百至数千时，
+
+[22]。传统迭代 IK 可追溯到 resolved-rate control、阻
+
+计算范式发生根本转变——问题从” 单个 6 维非线性
+
+尼最小二乘和误差阻尼伪逆等方法 [12, 13, 14, 15, 16]，
+
+最小二乘” 变为”N 个独立 6 × 6 小矩阵运算的批量并
+
+这些方法在单目标场景中易于部署，但当目标数达到百
+
+行调度问题”。在这一范式下，GPU 的固定调度开销
+
+级以上时，每目标毫秒级耗时难以满足实时规划前端需
+
+（kernel launch ≈ 5–10 µs/次）和主机–设备同步延迟可
+
+求。在 GPU 加速领域，cuRobo[8] 采用 CUDA Graph
+
+能主导实际性能 [6, 7]，形成小矩阵批量计算的结构性
+
+和粒子群-L-BFGS 优化器实现大规模并行 IK，后续工
+
+矛盾：每个子问题计算量极小，不足以摊薄调度开销；
+
+作进一步从可变精度、混合采样优化和工业扩展自由度
+1
+
+Systems Engineering and Electronics
+
+系统工程与电子技术
+
+2 运动学结构驱动的 CUDA 小矩
+
+应用等角度推进 GPU 运动生成 [9, 10, 11]。不过，通
+用多阶段优化结构在 N ≤ 1000 的中小批量场景中仍
+
+阵加速方法
+
+存在固定调度成本。本文关注的问题是：针对 6 × 6 这
+一固定且极小的矩阵规模，将运动学结构信息编码为
+
+本章按自底向上的顺序展开：首先将运动学参数编
+
+编译期常量并融合为单核函数后，能否在中等精度阈
+
+码为 GPU 常量内存，然后设计融合 FK 函数实现解析
+
+值下获得稳定吞吐收益？
+
+雅可比的高效组装，接着给出低控制流复杂度 LM 迭
+
+本研究提出运动学结构驱动的 CUDA 小矩阵加速
+
+代算法，最后将所有组件融合为单一 target-block 核函
+
+方法，简称 OPT4C。其核心不是将已有算法库移植至
+
+数。
+
+GPU，而是将运动学结构信息（关节轴方向、解析几
+何关系、固定 Sobol 种子数 K = 16）作为编译期常
+
+2.1
+
+量编码进核函数，使 FK、雅可比组装、LM 迭代更新
+
+运动学模型至 GPU 常量内存的编译期
+编码
+
+与块内候选筛选全部在单一 kernel 内完成。该研究在
+
+UR10 运动学参数来源于官方 URDF 模型 [17]。将
+
+NVIDIA GeForce RTX 4060 Laptop GPU 上对方法进
+
+以下编译期确定的信息编码为 CUDA __constant__
+
+行了系统实验验证和微架构分析。
+
+内存：
+
+该方法的应用场景界定为：批量目标数 N 在数百
+量级（N ≤ 1000）、机械臂构型固定为 6-DOF、碰撞
+
+• 6 个关节轴单位向量 ai ∈ R3（a0 = Z, a1 = Y, a2 =
+
+检测不在 IK kernel 内处理的实时规划前端。对于通
+
+Y, a3 = Y, a4 = −Z, a5 = Y ）；
+
+用多阶段 GPU pipeline，小批量 IK 中 kernel launch、
+host-device 同步和全局内存中转会显著影响端到端延
+
+• 6 个连杆偏移矩阵 origini ∈ SE(3)；
+
+迟；本文通过单 kernel fusion 压缩上述固定调度成本。
+
+• 腕 3 至 tool0 固定变换 Twrist3_to_tool0 ；
+
+fusion 之后，主要瓶颈转移为 FP64 小矩阵求解、三角
+
+• 关节限位 [qi,min , qi,max ] 和障碍函数参数。
+
+函数和标量寄存器运算的指令延迟。
+
+Ada Lovelace 架构（SM 8.9）提供 48 KB 常量缓
+存，所有线程块可通过广播总线低延迟访问。这些参数
+
+1 问题定义与评价协议
+
+总计约 2 KB——不足缓存容量的 5%，可避免明显的
+
+1.1 批量 IK 问题形式化
+
+常量缓存逐出。
+
+令 q ∈ R6 为 UR10 六个旋转关节角，正运动学
+
+2.2
+
+Tee (q) ∈ SE(3) 将关节角映射至末端 tool0 位姿。对目
+
+数值差分雅可比需对每个关节执行正负扰动 FK，
+
+标 T ⋆ ，定义平移误差 ep (q) = pee (q) − p⋆ ∈ R3 和旋转
+误差 eR (q) = log(R
+
+⋆⊤
+
+∨
+
+每迭代 6 × 2 = 12 次额外 FK 调用。对平均 20 次 LM
+
+Ree (q)) ∈ R 。单目标 IK：
+3
+
+αR
+1
+∥ep (q)∥2 +
+∥eR (q)∥2 .
+2
+q∈[qmin ,qmax ] 2
+min
+
 融合 FK 函数与解析雅可比组装
-数值差分雅可比需对每个关节执行正负扰动 FK，每迭代  次额外 FK 调用。对平均 20 次 LM 迭代，累计260 次 FK 调用——FK 成为计算瓶颈。本文设计的融合 FK 函数在单次前向传播中同步输出三个层次的几何量：末端 tool0 位姿 、各关节世界位置 、各关节世界转轴 。算法 1 给出了融合 FK 的计算流程。
-alg:fk算法1   融合 FK 函数（含坐标系输出）
-// 输入：6维关节角向量
-// 输出：末端tool0位姿、关节世界位置、关节转轴
-Input: 
-Output: , , 
-// 初始化4×4齐次变换矩阵为单位阵
-for  to  do
+
+迭代，累计 ≈260 次 FK 调用——FK 成为计算瓶颈。
+(1)
+
+本研究设计的融合 FK 函数在单次前向传播中同步输
+出三个层次的几何量：末端 tool0 位姿 Tee 、各关节世
+
+批量 IK 需对 N 个独立目标并行求解式 (1)，输出每目
+
+(i)
+
+界位置 pi 、各关节世界转轴 zi = R3×3 · ai 。算法 1 给
+
+标的最佳候选解。值得注意的是，6-DOF 串联机械臂
+
+出了融合 FK 的计算流程。
+
+在关节限位和奇异位形附近存在多解性和可解性退化
+
+获得 (pi , zi ) 后，6 × 6 解析雅可比矩阵的组装仅需
+
+问题 [15]，多种子策略是应对该挑战的有效手段。
+
+6 次叉积运算 [1, 18]：
+Jv,i = zi × (pee − pi ),
+
+1.2 统一评价协议
+• Strict 成功率：同时满足 ep < 5 mm 且 eR < 1◦
+
+Jω,i = zi ,
+
+i = 0, . . . , 5. (2)
+
+与有限差分方案相比，解析组装的优势主要体现在三
+个方面：（1）减少 FK 调用次数，以 6 次叉积替代 12
+
+的目标比例；
+
+次扰动 FK；
+（2）避免差分步长调参；
+（3）在奇异附近
+
+• 全样本位置误差 p95：全部 N 个目标（含失败）位
+
+或尺度不一致时提供更稳定的梯度方向。本文不将解
+
+置误差的 95 分位数；
+
+析雅可比的收益归因于差分截断误差接近 5 mm 阈值，
+
+• 原始吞吐量：N /t̄gpu ，t̄gpu 为 CUDA event 测量
+
+而是将其定位为降低计算量和提高 LM 方向稳定性的
+
+的 GPU 流时间均值（30 次重复）
+。
+
+结构化实现。
+2
+
+Systems Engineering and Electronics
+
+系统工程与电子技术
+
+表1
+
+算法 1
+
+融合 FK 函数（含坐标系输出）
+
+// 输入：6 维关节角向量
+// 输出：末端 tool0 位姿、关节世界位置、关节转轴
+Input: q[0:5]
+Output: Tee , p[0:5][0:2], z[0:5][0:2]
+// 初始化 4×4 齐次变换矩阵为单位阵
+T ← I4
+for i = 0 to 5 do
 // 施加连杆偏移矩阵，记录关节世界位置
+T ← T · origin[i]
+p[i] ← [T3 , T7 , T11 ]
 // 提取当前累积旋转子块，计算世界转轴向量
-// 施加绕关节轴的旋转
-// 施加腕3至tool0固定变换
-return , , 
-获得  后， 解析雅可比矩阵的组装仅需 6 次叉积运算：
-与有限差分方案相比，解析组装具有双重优势：（1）计算量——无须重复 FK，仅 6 次叉积（各 6 FLOP）替代 12 次 FK（各800 FLOP）；（2）精度——差分截断误差  vs 机器精度 ，相差 10 个数量级。该精度优势对 Strict 阈值（5 mm/1）判定具有直接影响：差分方案的截断误差（）已接近或超过阈值量级，可能将收敛解误判为失败；解析方案的机器精度（）则完全消除这一风险。
-无分支 LM 迭代算法
-每个 Sobol 种子独立执行最多 60 次 LM 迭代。加权误差  与解析雅可比  构造正规方程：
-其中  为关节限位二次障碍函数，，margin  rad（），。关键设计：阻尼因子  摒弃传统 LM 的 acceptance-rejection 分支——若  则 ，否则 ，——新候选解总是被接受。这确保 32 线程经线内全部线程执行相同指令路径，消除 warp divergence。 正规方程的求解采用寄存器级高斯消元（Gaussian elimination with partial pivoting）在 6 次主元消去中完成，所有中间变量保持在寄存器中，零全局内存访问。
-算法 2 给出了单个种子的完整 LM 迭代流程。
-alg:lm算法2   单种子 LM 迭代（无分支，寄存器级小矩阵求解）
-// 输入：Sobol种子、目标位姿、最大迭代次数、初始阻尼
+R3×3 ← T0:2,0:2
+
+表 2 算法 2
+
+z[i] ← R3×3 · axis[i]
+
+级小矩阵求解）
+
+单种子 LM 迭代（低控制流复杂度，寄存器
+
+// 施加绕关节轴 i 的旋转
+T ← T · Rodrigues(axis[i], q[i])
+
+// 输入：Sobol 种子、目标位姿、最大迭代次数、初始阻尼
+
+// 施加腕 3 至 tool0 固定变换
+
 // 输出：最优关节角、代价、成功等级
-Input: , , , 
-Output: , , 
+
+Tee ← T · Twrist3_to_tool0
+
+Input: qseed , Ttarget , max_iter=60, λ0 =0.01
+
+return Tee , p, z
+
+Output: qbest , cost_best, success_rank
 // 初始化
-; ; 
-for  to  do
-// 调用算法1：融合FK输出末端位姿+关节位置+转轴
-; 
-// 解析雅可比组装：6次叉积替换12次扰动FK
-for  to  do
-// 正规方程 + 寄存器级6×6高斯消元
-; 
-; clamp to 
-// 损失评估：位姿代价+限位障碍
-// 阻尼自适应：无分支——总是接受trial，仅调节
-if  then  else 
-if  then 
+q ← qseed ; λ ← λ0 ; cost_best ← ∞
+
+2.3 低控制流复杂度 LM 迭代算法
+
+for iter = 1 to max_iter do
+// 调用算法 1：融合 FK 输出末端位姿 + 关节位置 + 转轴
+
+每个 Sobol 种子独立执行最多 60 次 LM 迭代 [19,
+
+(Tee , p, z) ← FusedFK(q)
+
+⊤ ⊤
+20]。加权误差 e = [e⊤
+∈ R6 与解析雅可比
+p , α R eR ]
+
+J ∈R
+
+6×6
+
+ep ← pee − ptarget ; eR ← log(R⊤ Ree )
+
+构造正规方程：
+
+// 解析雅可比组装：6 次叉积替换 12 次扰动 FK
+for i = 0 to 5 do
+
+(J ⊤ J + λI)∆q = −(J ⊤ e + wlimit ∇Φlimit ),
+
+J0:2,i ← z[i] × (pee − p[i])
+
+(3)
+
+J3:5,i ← z[i]
+
+∑5
+
+j=0 ϕ(qj ) 为关节限位二次障碍函数，
+ϕ(qj ) = max(0, m−(qj −qj,min ))2 +max(0, m−(qj,max −
+qj ))2 ，margin m = 0.087 rad（≈ 5◦ ）
+，默认 wlimit = 0.03。
+
+// 正规方程 + 寄存器级 6×6 高斯消元
+
+关键设计：阻尼因子 λ 摒弃传统 LM 的 acceptance-
+
+// 损失评估：位姿代价 + 限位障碍
+
+其中 Φlimit =
+
+H ← J ⊤ J + λI; g ← J ⊤ e
+∆q ← GaussElim6 × 6(H, −g − w∇Φ)
+qtrial ← q + ∆q; clamp to [qmin , qmax ]
+cost ← 0.5∥e∥2 + wlimit Φ(qtrial )
+
+rejection 回滚分支——若 ρ > 0 则 λ ← 0.5λ，否则 λ ←
+
+ρ ← (cost_old − cost)/cost_old
+
+2λ，λ ∈ [10−6 , 0.5]——新候选解总是被接受。该设计降
+
+// 阻尼自适应：总是接受 trial，仅调节 λ
+
+低了控制流复杂度和状态保存开销，但不同 seed 的阻
+
+if ρ > 0 then λ ← 0.5λ else λ ← 2λ
+
+尼更新和收敛判定仍可能导致 warp 内分支分化，因此
+
+q ← qtrial
+if cost < cost_best then (qbest , cost_best) ← (q, cost)
+
+本文仅将其称为低控制流复杂度实现。6×6 正规方程的
+
 // 收敛判定
-if  then break
-return 
-Target-Block 融合映射：单 Kernel 端到端执行
-上述 LM 迭代对  个目标   个种子独立执行，共  个独立求解任务。传统方案的流水线为：核函数启动  全局内存写回候选解  CPU 后处理筛选  再次启动核函数——核函数启动次数为 （ 为权重级别数）。本文的 target-block 融合映射将全部工作压缩为单次核函数启动，如算法 3 所示。
-alg:kernel算法3   Target-Block 融合核函数（单 Kernel，共享内存块内选择）
+
+求解采用寄存器级高斯消元（Gaussian elimination
+
+if converged(∥ep ∥<5mm, ∥eR ∥<1◦ ) then break
+
+with partial pivoting）在 6 次主元消去中完成，所
+
+return (qbest , cost_best, success_rank)
+
+有中间变量保持在寄存器中。
+算法 2 给出了单个种子的完整 LM 迭代流程。
+
+2.4 Target-Block 融合映射：单 Kernel 端
+到端执行
+上述 LM 迭代对 N 个目标 × K 个种子独立执
+行，共 N × K 个独立求解任务。朴素逐目标/逐种子
+实现的启动次数可能随 N 和 K 增长，而更常见的
+batched GPU pipeline 启动次数主要随优化阶段数和
+迭代阶段数增长。本文的优势不是相对一个极差的逐
+3
+
+Systems Engineering and Electronics
+
+系统工程与电子技术
+
+目标 baseline，而是将 FK、Jacobian、LM update 和
+
+和最终选择，总容量约 2 KB。候选写入和读取只发
+
+候选选择融合进单个 target-block kernel，减少阶段间
+
+生在每个 block 内，访问次数相对 LM 主循环较少；
+
+全局内存中转和 host-device 同步。
+
+结合 CUDA 共享内存与访存优化建议 [23]，Nsight
+
+表 3
+
+算法 3
+
+Compute 采样显示共享内存访问不是主要瓶颈。本文
+
+Target-Block 融合核函数（单 Kernel，共享
+
+后续不将共享内存访存冲突作为主要优化目标，而将
+
+内存块内选择）
+
+重点放在 FP64 小矩阵求解、三角函数和标量寄存器
+运算上。
+
 // 核函数签名与启动配置
-Kernel: 
-Grid:  blocks, Block: 32 threads
-Constants: ,  (global)
-Shared:  (, )
-Output: 
-// 每个Block处理一个目标；16条lane各执行一个Sobol种子
-; 
-if  then
-// 加载种子，调用算法2执行LM迭代
-// 候选解写入共享内存（列步长布局消除Bank冲突）
-for  to  do 
- 目标平移分量
-// 同步全部16 lane的候选解写入
-// 仅lane 0执行块内三级层次化选择
-if  then
-for  to  do
-// 优先级1: success rank
-if  then 
-else if equal then
-// 优先级2: nearlimit (0优于1)
-if  then 
-// 优先级3: pose cost升序
-else if equal  
-then 
-// 最佳候选从共享内存写回全局内存
-for  to  do 
- (pose cost)
- (success rank)
-算法 3 的三个关键数据结构设计为：
-(1) Grid-Block 映射。 <<<N,32>>> 启动配置将  个目标位姿一对一映射至  个线程块，每块 32 线程中 lane 0-15 各承载一个 Sobol 种子（），lane 16-31 空闲。这种映射使每个目标的计算完全局部化于一个 SM 内——无跨块通信、无全局同步。
-(2) 共享内存列步长布局。 候选解数组 scand[16][16] 采用 kCandidateStride=16 的列优先存储（C 语义下为 [16][16] 行优先布局，但访问模式为列优先：相邻 lane 写入同一字段时地址偏移  bytes = 4 个 Bank 宽度）。由于 GPU 共享内存共 32 个 Bank（每 Bank 4 bytes），128 bytes 偏移恰好跨过 32 个 Bank 后回到同一 Bank 的同一 phase——但由于 32 与 16 互质，相邻 lane 不会同时访问同一 Bank。PTX 汇编确认 Bank 冲突为零。
-(3) 块内三级层次化选择。 lane 0 扫描 16 个候选解的优先级：success rank（Strict  Medium  Loose  Fail） nearlimit 标志位（0 优于 1） pose cost 升序。该选择逻辑完全在共享内存和寄存器中完成，零额外 kernel launch。
-图 - 展示了线程映射架构和完整算法流程。
-Target-Block 线程映射架构
-*[tp]
-求解器完整算法流程
+
+(3) 块内三级层次化选择。 lane 0 扫描 16 个候选
+
+Kernel: IK_LM_Multiseed_Block_Target
+Grid: N blocks, Block: 32 threads
+
+解的优先级：success rank（Strict > Medium > Loose
+
+Constants: Ttargets [N ], seeds[N ][K][6] (global)
+
+> Fail）→ near_limit 标志位（0 优于 1）→ pose cost
+
+Shared: s_cand[K][stride] (K=16, stride=16)
+Output: best[N ][kBestStride]
+
+升序。该选择逻辑在共享内存和寄存器中完成，不引入
+
+// 每个 Block 处理一个目标；16 个 lane 各执行一个 Sobol 种
+
+额外 kernel launch。
+
+子
+
+图 1 展示了线程映射架构。该图突出 grid 与目标
+
+tid ← blockIdx.x; lane ← threadIdx.x
+
+的一一对应、lane 级 Sobol 候选分工、共享候选缓存和
+
+if lane < K then
+
+lane 0 最优候选写回路径。
+
+// 加载种子，调用算法 2 执行 LM 迭代
+qseed ← seeds[tid][lane]
+(qbest , cost, rank) ← LM_Iter(qseed , Ttargets [tid])
+
+2.5
+
+// 候选解写入共享内存（仅用于块内候选暂存）
+for j = 0 to 5 do s_cand[lane][j] ← qbest [j]
+
 Kernel Fusion 的调度开销分析
-表  给出了 Kernel Fusion 前后的核函数启动次数对比。传统多 kernel 方案中，逐种子逐权重分别启动核函数导致累计启动延时随  线性增长；本文方案将其压缩至常数 1，使调度开销从毫秒级降至微秒级（ GPU 流时间）。这一结构性优势在  的低批量场景中尤为突出——cuRobo 虽通过 CUDA Graph 缓解了部分启动延迟，但其多阶段流水线（粒子初始化、评估、L-BFGS 更新）在  时固定开销占比仍然显著。
-Kernel Fusion 前后的调度开销对比
-实验设置
-所有实验在单块 NVIDIA GeForce RTX 4060 Laptop GPU 上进行（Ada Lovelace，SM 8.9，24 组 SM，8 GB GDDR6，FP64 理论峰值0.18 TFLOPS）。软件栈：CUDA Toolkit 13.3（nvcc V13.3.33）、驱动 610.43.02、GCC 11.4.0、-O3 -DCMAKEBUILDTYPE=Release。求解器参数：variant = opt4cblocktarget、precision = fp64、limitgradient = analytic、（Sobol 序列）、预热 10 次、重复测量 30 次。所有 GPU 时间由 CUDA event API 测量（cudaEventElapsedTime），排除首轮预热和内存分配时间。
-目标位姿采用"随机关节角  FK"策略生成，确保物理可达。固定随机种子 42，生成 （步长 100，共 10 个规模）的目标位姿 raw 文件（ double，行优先  齐次矩阵）。cuRobo 对比使用默认 cuRobo-Graph 模式（CUDA Graph 开启、碰撞检测关闭、单种子 numseeds=1），所有结果经同一外部 URDF FK 评估管线复评。
-实验结果与分析
-静态批量 IK 综合性能
-表  给出 10 个规模的综合结果。全部规模通过单调性检查（Loose SR  Medium SR  Strict SR），零 NaN/Inf 异常。Strict 成功率 0.940-0.960， 时全样本位置误差  均低于 5 mm Strict 阈值（ 时个别失败样本拉高 ——小样本下单个失败对分位数影响更大）。平均迭代 19-21 次，近限位比例 。
-*[tp]
-静态批量 IK 综合性能（，步长 100）
-吞吐量增长模式。  吞吐量仅提升 21%（），符合典型的固定开销分摊曲线——该趋势可由 Amdahl 定律刻画：lane 0 串行候选选择（ ms/target）构成不可并行的串行分量。GPU 流时间与  严格线性（，斜率 0.0549 ms/target），不随批量增大而退化——这是 target-block 映射结构确定性的直接验证。
-GPU 时间组成（）。 核函数执行占 GPU 流时间的 99.76%（54.74 ms），H2D 传输（目标位姿+种子上传）0.550 ms（0.20%），D2H 传输（最佳解回读）0.097 ms（0.04%），核函数启动约 0.007 ms（）。这一定量分解验证了 Kernel Fusion 消除调度开销的有效性：在多 kernel 方案中，仅核函数启动累计即可达毫秒量级。
-图 - 给出了吞吐量与成功率的密集对比，全样本位置误差  的数值对比见上文。
-批量吞吐量对比
-Strict 成功率对比
-全样本位置误差  对比如下：本方法  在  时均低于 5 mm Strict 阈值（4.34-4.91 mm），而 cuRobo K=1 的  高达 74-115 mm（被失败样本尾部拉高），cuRobo K=16 降至 0.5-0.9 mm。本方法  虽高于 cuRobo K=16，但已完全满足 5 mm 工业抓取精度要求。
-与 cuRobo 的系统级对比与公平性分析
-表  给出了三种配置的系统级对比：本方法 （默认）、cuRobo （同等算力）、cuRobo （默认单种子）。三者的定位构成清晰的帕累托前沿。
-默认配置对比。  时本方法在吞吐量和精度上同时领先 cuRobo K=1（吞吐比 1.45:1，SR 0.960 vs 0.860）。 时 cuRobo K=1 凭借粒子群并行搜索反超， 时吞吐达  targets/s，但 Strict SR 仅 0.840， 高达 88.7 mm——约 16% 的失败样本将全样本误差拉高了两个数量级。
-同等 16 种子公平对比（核心贡献）。 将 cuRobo 种子数提升至与本方法相同的  后，cuRobo 的 L-BFGS 优化器展现出更强的收敛能力：Strict SR 达 0.980-0.988（本方法 0.954-0.960）， 仅 0.5-0.9 mm（本方法 4.3-4.6 mm）。然而，本方法的吞吐量是 cuRobo K=16 的 1.67-1.79 倍（ 时  vs  targets/s）。该吞吐优势完全来源于 Kernel Fusion 对多阶段流水线调度开销的消除——cuRobo 即使启用 CUDA Graph，粒子初始化、评估、L-BFGS 更新的多阶段架构在  时仍存在固定调度成本。
-有效吞吐量分析。 cuRobo K=1 表面吞吐虽达 ，但其 16% 的失败率意味着大量目标需重试或插值后处理；若将失败目标的重计算开销计入，其有效吞吐（）约为 ，仍高于本方法（），但差距从 4.0 倍缩小至 3.5 倍。对于不允许失败重试的实时规划前端，本方法的一次性高成功率（）具有明确的工程优势。
-*[tp]
-三种配置的系统级对比与帕累托前沿分析（ 代表性数据）
-注：有效吞吐 K=1p95p95p95K=16<5K=16K=1K=1K=16K=1NK=16K=1K=16p95K=1p95K=16K=1K=1p95K=16K=1K=16N=10002.7910^41.8210^4KK=16K=1<0.01%NKW1.0410^41.8210^465536/620810.510.5/2444%=16ii+1_addr=16bytes  bytes——恰好跨越 32 个 Bank 后回到同一 Bank。此时两者访问同一 Bank 但不同 phase（4-byte 粒度），不会触发 Bank 冲突。PTX 汇编确认共享内存 Bank 冲突计数为零，总用量 2 064 bytes（ of 48 KB/SM）。
-浮点吞吐利用率估算。 以  为例：每目标约 20 次迭代  每迭代约 1 650 FLOP = 33 000 FLOP/target，总计  FLOP 在 54.9 ms 内完成，实际 FP64 吞吐约 0.60 GFLOPS——仅为 RTX 4060 Laptop GPU 理论峰值（约 180 GFLOPS）的 0.33%。极低的浮点利用率源于大量标量寄存器操作、超越函数（sin/cos/atan2）和控制流指令——小型  矩阵运算中传统 FLOP/s 指标不适用，这也是小矩阵 GPU 计算的普遍特征。
-混合精度验证实验。 上述 PTX 分析推断核函数瓶颈在 FP64 线性求解而非 FP32 可覆盖的雅可比组装与 Hessian 累加。为验证这一推断，将雅可比构造与 Hessian 累加迁移至 FP32（mixedsafe 模式），仅保留  高斯消元与收敛判定在 FP64。结果如表  所示： 时吞吐量仅从  提升至  targets/s（+2%），Strict SR 与  完全持平。该结果与 Ada Lovelace 架构 FP32:FP64 吞吐比（64:1）形成鲜明反差，定量证实了 PTX 分析的结论——当前核函数的性能天花板不在精度选择，而在  寄存器级高斯消元的 FP64 发射延迟。换言之，本文 0.33% 的 FP64 利用率并非实现缺陷，而是小矩阵计算中大量标量操作、超越函数与控制流的固有特征，混合精度对此无能为力。
-混合精度消融实验（, ）
-Nsight Compute 动态验证。 为进一步验证 PTX 静态分析的结论，使用 NVIDIA Nsight Compute 对主核函数（, ）进行运行时采样，关键动态指标如表  所示。Warp Stall Long Scoreboard 占比高达 83.2%——这意味着经线在 83% 的时钟周期内因等待 FP64 操作数就绪而被阻塞，直接证实了 FP64 管线发射延迟是性能瓶颈的论断。Issue Slot Utilization 仅为 2.32%，表明指令发射单元绝大部分时间处于空闲状态，与 Long Scoreboard 高占比互为印证。共享内存 Bank 冲突计数实测仅 112k 次（相对数千万次共享访存请求，冲突率 ），验证了 kCandidateStride=16 列步长布局的 Bank 冲突消除效果。
-Nsight Compute 动态性能指标（, ）
-批量扩展性分析
-图  展示了吞吐量和 GPU 时间随  的变化趋势。吞吐量从  的  渐近收敛至  的  targets/s，符合 Amdahl 定律预测——lane 0 串行候选选择构成不可并行化串行段。GPU 流时间严格线性（），每目标固定开销0.055 ms，用户无需对不同批量规模进行预扫描或参数调优即可精确预估吞吐量——这是定制 CUDA 线程映射相对于通用 GPU 调度器的核心优势。
-批量扩展性分析
-讨 论
-设计范式：帕累托前沿上的定位
-消融实验（第 4.3 节）与公平对比（第 4.2 节）共同确立了本方法在"质量-吞吐量"帕累托前沿上的精确位置。cuRobo K=16 凭借 L-BFGS 的强收敛能力占据质量天花板（SR 0.988,  0.9 mm），但多阶段流水线架构在  时调度成本显著，吞吐仅 。cuRobo K=1 占据极端吞吐端（），但 16% 的失败率使其质量不可用。本方法 K=16 位于两者之间的拐点：SR 0.954（满足 Strict 阈值）、 4.6 mm（满足 5 mm 工业抓取精度）、吞吐 （1.75 倍于同种子数 cuRobo）。
-这一拐点定位的工程意义明确：在采样式运动规划的典型场景（，单次查询需一次性高成功率），本方法提供了无需后处理、延迟确定的求解保障。4.6 mm 的  虽高于 cuRobo K=16 的 0.9 mm，但已完全满足 Strict 阈值——在满足工程精度的前提下，1.75 倍的吞吐增益具有明确的实际价值。若应用场景要求亚毫米级精度（如精密装配），cuRobo K=16 是更优选择——这恰恰划定了本方法的适用边界。
-本方法的核心贡献由此明确为小矩阵批量计算中硬件-算法协同设计的结构性优势，而非单一优化器的性能超越。
-可推广性与加速方向
-本方法的核心设计原则——编译期常量编码 + 单核函数固化 + 经线内无分支发散——不依赖于 UR10 的具体参数。对任意 -DOF 串联机械臂（如 Franka Panda 7-DOF），解析雅可比组装仍可通过融合 FK 获得，target-block 映射同样适用。两个明确的加速方向：（1）算法级加速——混合精度实验（第 4.4 节）已证实 FP32 雅可比/Hessian 仅带来约 2% 的吞吐增益，表明种子 warm-start 减少平均迭代次数或伪逆替换高斯消元降低单迭代延迟，比精度层面的加速更具潜力；（2）种子 warm-start——利用相邻目标在  中的空间邻近性共享收敛解，减少平均迭代次数。
-结 论
-针对批量 IK 中单种子收敛概率不足与多 Kernel 调度开销过高的双重瓶颈，本文提出硬件固化的 Sobol 多起点并行 IK 加速方法。主要贡献：
-（1）Sobol 多起点 + Kernel Fusion 协同设计：将  Sobol 种子固化于单核函数内，16 经线并行 LM 迭代 + 共享内存块内候选选择，核函数启动次数恒为 1。消融实验证实： 从 16 降至 1 后吞吐量仅提升约 35%，但成功率从 0.954 暴跌至 0.522——多起点策略是成功率的决定性来源。
-（2）融合 FK + 解析雅可比：单次 FK 输出 , , ，雅可比由 6 次叉积组装，每迭代 FK 调用从 13 次降至 1 次，精度从  提升至 。
-（3）无分支 LM + 寄存器级  求解：摒弃 acceptance-rejection 消除经线内分支发散；高斯消元全程寄存器内完成。
-（4）公平对比确立帕累托前沿定位：同等 16 种子下，cuRobo SR 0.988 为质量天花板，本方法 SR 0.954 满足 Strict 阈值且吞吐为其 1.75 倍——Kernel Fusion 消除多阶段调度开销的结构性优势得以定量验证。三方对比（cuRobo K=16 / 本方法 K=16 / cuRobo K=1）确立清晰的帕累托前沿。
-（5）PTX 微架构画像：194 寄存器/线程，44% 理论占用率，共享内存 Bank 冲突为零。
-综上，在 、固定 6-DOF、单消费级 GPU 条件下，本方法以 Kernel Fusion 架构在满足 Strict 工程精度阈值的前提下，实现 1.75 倍于同种子数通用求解器的吞吐量。该优势根源于小矩阵批量计算中硬件-算法协同设计的结构性红利，而非优化器本身的性能超越。
-后续工作：Nsight Compute 动态性能计数采样以获取精确的 Stall 原因分布；基于 Sobol 种子的 warm-start 策略减少平均迭代次数；扩展至 Franka Panda 7-DOF 验证可推广性。
+表 4 给出了不同实现路径的阶段开销对比。对于
+
+s_cand[lane][6..8] ← 目标平移分量
+
+本文方法，核心求解阶段由单个 target-block kernel 完
+
+s_cand[lane][9] ← cost
+s_cand[lane][10] ← rank
+
+成，H2D、kernel、D2H 之外无中间 host-device 同步。
+
+s_cand[lane][11] ← (near_limit ? 1 : 0)
+
+该结构差异在 N ≤ 1000 的低批量场景中较为重要；
+
+// 同步全部 16 lane 的候选解写入
+
+cuRobo 虽通过 CUDA Graph 缓解部分启动延迟，但
+
+__syncthreads()
+
+其粒子初始化、评估和 L-BFGS 更新仍属于多阶段优
+
+// 仅 lane 0 执行块内三级层次化选择
+
+化流水线。
+
+if lane = 0 then
+best_idx ← 0
+
+表 4 Kernel Fusion 前后的调度开销对比
+
+for k = 1 to K − 1 do
+// 优先级 1: success rank
+if s_cand[k][10]
+
+>
+
+s_cand[best_idx][10] then
+
+实现方式
+
+best_idx ← k
+else if equal then
+
+朴素逐目标实现
+O(N K)
+多次
+多 阶 段 batched O(stage × 多次
+pipeline
+iter)
+本文 OPT4C
+1 core ker- 最少
+nel
+
+// 优先级 2: near_limit (0 优于 1)
+if s_cand[k][11]
+
+<
+
+Kernel 阶段 全局内存往 Host 同步
+返
+
+s_cand[best_idx][11] then
+
+best_idx ← k
+// 优先级 3: pose cost 升序
+
+多次
+少量
+无中间同
+步
+
+else if equal ∧ s_cand[k][9] < s_cand[best_idx][9]
+then best_idx ← k
+// 最佳候选从共享内存写回全局内存
+
+3 实验设置
+
+for j = 0 to 5 do best[tid][j] ← s_cand[best_idx][j]
+best[tid][6] ← s_cand[best_idx][9] (pose cost)
+best[tid][7] ← s_cand[best_idx][10] (success rank)
+
+所 有 实 验 在 单 块 NVIDIA GeForce RTX 4060
+Laptop GPU 上 进 行 （Ada Lovelace，SM 8.9，24
+
+算法 3 的三个关键数据结构设计为：
+
+组 SM，8 GB GDDR6，FP64 理 论 峰 值 ≈0.18
+
+(1) Grid-Block 映射。 <<<N,32>>> 启动配置将
+
+TFLOPS） 。 软 件 栈 为 CUDA Toolkit 13.3（nvcc
+
+N 个目标位姿一对一映射至 N 个线程块，每块 32 线
+
+V13.3.33）
+、驱动 610.43.02、GCC 11.4.0，编译选项为
+
+程中 lane 0–15 各承载一个 Sobol 种子（K = 16）
+，lane
+
+-O3 -DCMAKE_BUILD_TYPE=Release。本文方法的求解
+
+16–31 空闲。这种映射使每个目标的计算完全局部化于
+
+器参数为 variant = opt4c_block_target、precision =
+
+一个 SM 内——无跨块通信、无全局同步。
+
+fp64、limit_gradient = analytic、K = 16（Sobol 序列
+
+共 享 内 存 候 选 缓 存。 候 选 解 数 组
+
+、预热 10 次、重复测量 30 次。所有 GPU 时间由
+[21]）
+
+s_cand[16][16] 仅 用 于 块 内 16 个 候 选 解 的 暂 存
+
+CUDA event API 测量（cudaEventElapsedTime）
+，排
+
+(2)
+
+4
+
+Systems Engineering and Electronics
+
+系统工程与电子技术
+
+结构感知单核融合线程映射
+⽹格：N个线程块
+每块对应⼀个⽬标
+
+通道0--15
+Sobol起点/候选
+
+线程块 i
+⽬标 i
+并⾏
+候选
+
+读取
+T_i
+
+写回
+规约
+
+单核融合LM
+FK+雅可⽐+更新
+
+通道0选择
+最优有效候选
+
+共享候选缓存
+损失、q、状态
+
+通道16--31
+空闲/保留
+
+全局最优输出
+q*、误差、标志
+
+全局⽬标位姿
+T_i
+
+读取
+
+每个⽬标：候选⽣成 -> 阻尼LM迭代
+-> 限位正则 -> 严格FK复核
+
+图 1
+
+Target-Block 线程映射架构。一个 block 处理一个目标位姿，lane 0–15 分别处理 16 个 Sobol 起点，lane 16–31 保留
+
+为空闲线程；候选解暂存于共享内存，并由 lane 0 完成块内最佳候选选择后写入全局输出。
+
+除首轮预热和内存分配时间。
+
+< 1.0%。
+
+目 标 位 姿 采 用” 随 机 关 节 角 → FK” 策 略 生
+
+吞吐量增长模式。 N = 100 → 1000 吞吐量仅提
+
+成，确保 物理 可达。 固定随 机 种子 42，生 成 N =
+
+升 21%（1.50 → 1.82 × 104 ），符合典型的固定开销分
+
+100, 200, . . . , 1000（步长 100，共 10 个规模）的目标
+
+摊曲线——该趋势可由 Amdahl 定律刻画：lane 0 串
+
+位姿 raw 文件（[N, 16] double，行优先 4 × 4 齐次矩
+
+行候选选择（≈ 0.005 ms/target）构成不可并行的串行
+
+阵）
+。cuRobo 对比采用 cuRobo-Graph 模式，碰撞检测
+
+分量。GPU 流时间与 N 严格线性（R2 > 0.999，斜
+
+关闭，CUDA Graph 开启，并分别报告默认单种子配
+
+率 0.0549 ms/target），不随批量增大而退化——这是
+
+置（cuRobo-Graph-K1）和同等 16 种子配置（cuRobo-
+
+target-block 映射结构确定性的直接验证。
+
+Graph-K16）
+。cuRobo 的 graph capture、solver 构造和
+
+GPU 时间组成。如图 2 所示，kernel fusion 后
+
+内存分配不计入单次 GPU solve 时间；预热与重复测量
+
+OPT4C 的总时间主要由核心求解 kernel 贡献；为避
+
+阶段计入 CUDA Graph replay 后的求解时间。所有方
+
+免单一大占比掩盖次要开销，图中同时给出非 kernel
+
+法输出的关节角均经同一 UR10 URDF 外部 FK 管线
+
+开销的微秒级放大视图。N = 1000 时 H2D、D2H 与
+
+复评。本文以 Strict 作为主指标，并用 Loose、Medium
+
+launch 合计约 150 µs，仅占总 GPU 流时间的 0.274%。
+
+和 Ultra 作为辅助阈值：Loose 为 30 mm / 10◦ ，Medium
+
+这说明本文方法的后续优化重点不应继续放在减少调
+
+为 10 mm / 5◦ ，Strict 为 5 mm / 1◦ ，Ultra 为 2 mm
+
+度次数，而应转向降低单迭代 FP64 小矩阵求解、三角
+
+/ 0.5◦ ；四级阈值均基于复评误差计算。
+
+函数和标量寄存器运算的代价。
+100
+
+4 实验结果与分析
+
+(a) 总时间占⽐
+⾮Kernel
+0.274%
+
+(b) ⾮Kernel开销放⼤
+⾮Kernel
+0.201%
+
+⾮Kernel
+0.274%
+
+4.1 静态批量 IK 综合性能
+
+60
+
+时间 / us
+
+占⽐ / %
+
+80
+
+40
+
+0
+
+调性检查（Loose SR ≥ Medium SR ≥ Strict SR）
+，零
+
+N=���
+
+图2
+
+全样本位置误差 p95 均低于 5 mm Strict 阈值（N = 300
+
+D�H
+
+Launch
+
+���.�� us
+
+125
+100
+75
+
+25
+
+Kernel
+
+NaN/Inf 异常。Strict 成功率 0.940–0.960，N ≥ 500 时
+
+H�D
+
+150
+
+��.�� us
+
+50
+
+20
+
+表 5 给出 10 个规模的综合结果。全部规模通过单
+
+175
+
+N=���
+H�D
+
+0
+
+N=����
+Launch
+
+��.�� us
+
+N=���
+
+N=���
+
+N=����
+
+D�H
+
+OPT4C 时间组成与非 kernel 开销放大视图
+
+时个别失败样本影响而升高 p95——小样本下单个失败
+图 3 给出了吞吐量与成功率的密集对比，全样本位
+
+对分位数影响更大）。平均迭代 19–21 次，近限位比例
+5
+
+Systems Engineering and Electronics
+
+系统工程与电子技术
+
+表 5 静态批量 IK 综合性能（N = 100 ∼ 1000，步长 100）
+N
+
+GPU 时间/ms
+
+吞吐量/(t·s−1 )
+
+Strict SR
+
+p95/mm
+
+迭代次数
+
+近限位
+
+100
+
+6.658
+
+15019.0
+
+0.960
+
+4.38
+
+21.0
+
+0.010
+
+200
+
+13.724
+
+14572.8
+
+0.950
+
+5.49
+
+20.0
+
+0.005
+
+300
+
+19.334
+
+15516.5
+
+0.940
+
+27.04
+
+20.0
+
+0.007
+
+400
+
+24.090
+
+16604.1
+
+0.945
+
+15.44
+
+20.0
+
+0.005
+
+500
+
+28.837
+
+17338.9
+
+0.954
+
+4.34
+
+20.0
+
+0.004
+
+600
+
+33.677
+
+17816.3
+
+0.953
+
+4.36
+
+20.0
+
+0.005
+
+700
+
+39.329
+
+17798.8
+
+0.953
+
+4.78
+
+19.5
+
+0.006
+
+800
+
+44.421
+
+18009.3
+
+0.951
+
+4.91
+
+19.0
+
+0.006
+
+900
+
+49.330
+
+18244.6
+
+0.951
+
+4.90
+
+19.0
+
+0.007
+
+1000
+
+54.868
+
+18225.5
+
+0.954
+
+4.56
+
+19.0
+
+0.007
+
+置误差 p95 的数值对比见上文。图中同时列出 OPT4C-
+
+搜索反超，N = 1000 时吞吐达 7.26 × 104 targets/s，但
+
+K16、cuRobo-Graph-K1 和 cuRobo-Graph-K16，用于
+
+Strict SR 仅 0.840，p95 为 88.7 mm——约 16% 的失
+
+区分默认单种子吞吐优势和同等 16 种子质量优势；完
+
+败样本将全样本误差影响而升高了两个数量级。
+
+整数值见表 6 和图 4。
+
+同等 16 种子对比。将 cuRobo 种子数提升至与本
+方法相同的 K = 16 后，cuRobo 的 L-BFGS 优化器展
+
+(b) Strict成功率
+100
+
+7
+
+OPT�C-K��
+
+6
+
+cuRobo-Graph-K��
+
+现出更强的收敛能力：Strict SR 达 0.980–0.988（本方法
+
+cuRobo-Graph-K�
+
+80
+
+5
+
+Strict SR / %
+
+吞吐率 / 104 targets s−1
+
+(a) 批量吞吐率
+
+4
+3
+2
+
+0.954–0.960）
+，p95 仅 0.5–0.9 mm（本方法 4.3–4.6 mm）
+。
+
+60
+
+然而，本方法的吞吐量是 cuRobo K=16 的 1.67–1.79
+
+40
+
+倍（N = 1000 时 1.82 × 104 vs 1.04 × 104 targets/s）。
+
+20
+
+1
+100
+
+500
+
+1000
+
+0
+
+⽬标数 N
+
+图3
+
+该吞吐优势主要与单核函数融合减少阶段间全局内存
+100
+
+500
+
+1000
+
+中转和 host-device 同步有关，同时也与本文固定结构
+
+⽬标数 N
+
+LM 的较轻量计算路径有关。由于 cuRobo-Graph-K16
+
+批量吞吐率与 Strict 成功率对比
+
+追求更高成功率和更低残差，其内部粒子初始化、评估
+与 L-BFGS 优化流程更复杂，因此二者的吞吐差异不
+
+全样本位置误差 p95 对比如下：本方法 p95 在
+
+应仅归因于 kernel launch 或调度开销。
+
+N ≥ 500 时低于或接近 5 mm Strict 阈值（4.34–4.91
+mm）；cuRobo K=1 的 p95 为 74–115 mm，被失败样
+
+有效吞吐量分析。若仅以 throughput × Strict SR
+
+本尾部影响而升高；cuRobo K=16 降至 0.5–0.9 mm。
+
+衡量，cuRobo-Graph-K1 在 N = 1000 时仍具有更高
+
+5 mm/1◦ 阈值可作为采样式规划前端或中等精度任务
+
+有效吞吐；但该指标未反映失败目标在规划管线中的
+
+中的评价阈值；对于精密装配、插接和接触丰富任务，
+
+重采样、回退或轨迹修补代价。cuRobo-Graph-K1 的
+
+该阈值仍不足，需要更高精度的局部优化或视觉伺服
+
+成功样本 p95 仅为 0.28 mm，说明其成功解精度很高；
+
+闭环。
+
+同时，全样本 p95 被失败尾部抬高到 88.67 mm。对于
+要求单次 batch 输出高比例 Strict 解、且不希望引入
+
+4.2 与 cuRobo 的系统级对比与公平性分析
+
+额外回退逻辑的规划前端，OPT4C-K16 的一次性成功
+率更具工程可控性。
+
+表 6 给出了 N = 100, 500, 1000 下四种配置的系统
+
+注：有效吞吐 = 吞吐量 × Strict SR，反映实际成功求解的目标
+
+级对比：本方法 K = 16（默认）
+、本方法 K = 1（消融）
+、
+cuRobo-Graph-K16（同等种子数）和 cuRobo-Graph-
+
+速率。cuRobo K=1 全样本 p95 被失败样本尾部影响而升高，其成
+
+K1（默认单种子）。该表同时列出全样本 p95、成功样
+
+功样本 p95 仅 0.1–0.3 mm。本方法 p95 为 4.6 mm，虽高于 cuRobo
+
+本 p95 和有效吞吐量，用于区分” 求解速度” 和” 满足
+
+K=16 的 0.9 mm，但已满足本文 Strict 阈值（< 5 mm），适用于
+
+Strict 阈值的有效求解速度”。
+
+采样式规划前端等中等精度场景。
+
+默认配置对比。 N = 100 时本方法在吞吐量和精
+
+进一步地，为避免单一 Strict 阈值掩盖质量差异，
+
+度上同时领先 cuRobo K=1（吞吐比 1.45:1，SR 0.960
+
+本文在 N = 1000 下对 Loose、Medium、Strict 和 Ultra
+
+vs 0.860）。N ≥ 200 时 cuRobo K=1 凭借粒子群并行
+
+四级阈值进行扫描，结果如表 7 和图 5 所示。四级阈值
+6
+
+Systems Engineering and Electronics
+
+系统工程与电子技术
+
+表6
+
+cuRobo-Graph 与 OPT4C 的系统级对比（N = 100, 500, 1000）
+
+N
+
+方法
+
+K
+
+Strict SR
+
+吞吐/104
+
+全样本 p95/mm
+
+成功 p95/mm
+
+有效吞吐/104
+
+100
+100
+100
+100
+
+OPT4C
+cu-Graph
+OPT4C
+cu-Graph
+
 16
-Siciliano B, Sciavicco L, Villani L, et al. Robotics: modelling, planning and control[M]. Springer, 2010.
-LaValle S M. Planning algorithms[M]. Cambridge University Press, 2006.
-NVIDIA. CUDA C++ programming guide[EB/OL]. [2026-06-10]. https://docs.nvidia.com/cuda/cuda-c-programming-guide/.
-Orocos Project. Kinematics and dynamics library (KDL)[EB/OL]. [2026-06-10]. https://www.orocos.org/kdl.html.
-Beeson P, Ames B. TRAC-IK: an open-source library for improved solving of generic inverse kinematics//IEEE-RAS International Conference on Humanoid Robots, 2015: 928-935.
-Sundaralingam B, et al. cuRobo: parallelized collision-free robot motion generation[EB/OL]. arXiv: 2310.17274, 2023.
-Nakamura Y, Hanafusa H. Inverse kinematic solutions with singularity robustness for robot manipulator control[J]. Journal of Dynamic Systems, Measurement, and Control, 1986, 108(3): 163-171.
-Buss S R. Introduction to inverse kinematics with Jacobian transpose, pseudoinverse and damped least squares methods[J]. IEEE Transactions on Robotics, 2004, 20(1): 1-18.
-Universal Robots. Universal Robots ROS2 description[EB/OL]. [2026-06-10]. https://github.com/UniversalRobots/Universal_Robots_ROS2_Description.
-Levenberg K. A method for the solution of certain non-linear problems in least squares[J]. Quarterly of Applied Mathematics, 1944, 2: 164-168.
-Marquardt D W. An algorithm for least-squares estimation of nonlinear parameters[J]. Journal of the Society for Industrial and Applied Mathematics, 1963, 11(2): 431-441.
-Sobol I M. On the distribution of points in a cube and the approximate evaluation of integrals[J]. USSR Computational Mathematics and Mathematical Physics, 1967, 7(4): 86-112.
-NVIDIA. CUDA C++ best practices guide[EB/OL]. [2026-06-10]. https://docs.nvidia.com/cuda/cuda-c-best-practices-guide/.
-NVIDIA. Nsight Compute user guide[EB/OL]. [2026-06-10]. https://docs.nvidia.com/nsight-compute/.
-Chitta S, Sucan I, Cousins S. MoveIt![J]. IEEE Robotics  Automation Magazine, 2012, 19(1): 18-19.
+16
+1
+1
+
+0.960
+0.980
+0.450
+0.860
+
+1.502
+0.897
+1.535
+1.038
+
+4.38
+0.89
+642.23
+74.17
+
+3.17
+0.03
+4.31
+0.05
+
+1.442
+0.879
+0.691
+0.893
+
+500
+500
+500
+500
+
+OPT4C
+cu-Graph
+OPT4C
+cu-Graph
+
+16
+16
+1
+1
+
+0.954
+0.988
+0.502
+0.838
+
+1.734
+0.968
+2.572
+4.350
+
+4.34
+0.47
+686.16
+114.46
+
+2.10
+0.33
+4.77
+0.22
+
+1.654
+0.956
+1.291
+3.645
+
+1000
+1000
+1000
+1000
+
+OPT4C
+cu-Graph
+OPT4C
+cu-Graph
+
+16
+16
+1
+1
+
+0.954
+0.988
+0.522
+0.840
+
+1.823
+1.040
+2.786
+7.262
+
+4.56
+0.88
+685.01
+88.67
+
+2.55
+0.42
+4.61
+0.28
+
+1.739
+1.028
+1.454
+6.100
+
+注：cu-Graph 表示 cuRobo-Graph；吞吐与有效吞吐单位均为 104 targets/s。
+N=���� 时吞吐-成功率-误差三⽬标关系
+
+N=���� 阈值扫描：逐⽬标误差重算
+
+100
+
+Strict主阈值
+
+100
+
+80
+
+90
+
+70
+
+101
+
+成功率 / %
+
+80
+
+p��_all / mm
+
+Strict SR / %
+
+102
+
+40
+
+20
+
+⽅法
+OPT�C-K�
+
+60
+
+OPT�C-K��
+
+0
+
+cuRobo-K�
+
+50
+
+60
+
+cuRobo-K��
+
+1
+
+2
+
+3
+
+4
+
+5
+
+6
+
+OPT�C-K��
+
+cuRobo-K��
+
+OPT�C-K�
+
+cuRobo-K�
+
+Loose
+
+Medium
+
+Strict
+
+Ultra
+
+统⼀外部FK阈值等级
+
+100
+
+7
+
+图 5 不同误差阈值下的成功率扫描（N = 1000）
+
+吞吐率 / 104 targets s−1
+
+图 4 吞吐率–成功率–误差三目标关系（N = 1000）
+
+4.3
+
+Python/NumPy CPU-LM 量级对照
+为避免 GPU 加速结论脱离 CPU 求解语境，本文
+
+定义已在实验设置中给出，其中 Strict 仍作为主评价
+
+补充一个单进程 Python/NumPy CPU-LM 基线。该基
+
+指标，Ultra 仅用于观察更严格残差要求下的质量差异。
+
+线复用与 CUDA runner 相同的 UR10 结构常量、raw
+
+cuRobo-Graph-K16 在 Ultra 阈值下仍保持 0.970 成功
+
+target、Sobol seed、最大迭代次数和成功率阈值，仅用
+
+率，说明其精度优势明显；OPT4C-K16 在 Strict 和
+
+于量级对照；它不代表经过 C++、SIMD 或工业级工程
+
+Medium 阈值下均为 0.954，在 Loose 阈值下为 0.965，
+
+优化的 CPU IK 实现。结果如表 8 所示，CPU-LM-K16
+
+表明其定位是满足 5 mm/1◦ 附近的工程阈值，而不是
+
+在 N = 1000 时 Strict SR 与 OPT4C-K16 同为 0.954，
+
+追求亚毫米级精度。cuRobo-Graph-K1 的 Strict 成功
+
+但吞吐仅 6.74 targets/s；OPT4C-K16 的对应吞吐为
+
+率为 0.838，但 Loose 成功率升至 0.896，说明其失败
+
+1.72 × 104 –1.82 × 104 targets/s。该对照说明当批量规
+
+样本中存在一部分中等误差解；OPT4C-K1 在四级阈
+
+模达到百级以上时，GPU target-block 并行结构能够
+
+值下均明显低于 OPT4C-K16，进一步验证多起点策略
+
+显著摊薄固定调度和迭代开销。
+
+的必要性。
+
+表 8 Python/NumPy CPU-LM 量级对照
+表7
+
+不同误差阈值下的成功率扫描（N = 1000）
+方法
+
+方法
+
+Loose Medium Strict Ultra
+
+OPT4C-K16
+OPT4C-K1
+cuRobo-Graph-K16
+cuRobo-Graph-K1
+
+0.965
+0.568
+0.998
+0.896
+
+0.954
+0.540
+0.997
+0.857
+
+0.954
+0.522
+0.988
+0.838
+
+N Strict SR 吞吐/(t·s−1 ) p95/mm
+
+CPU-LM-K1
+100
+CPU-LM-K16 100
+CPU-LM-K1
+500
+CPU-LM-K16 500
+CPU-LM-K1 1000
+CPU-LM-K16 1000
+
+0.851
+0.249
+0.970
+0.825
+
+7
+
+0.450
+0.960
+0.502
+0.954
+0.522
+0.954
+
+94.20
+6.33
+102.97
+6.66
+106.78
+6.74
+
+642.2
+4.38
+686.2
+4.34
+685.0
+4.56
+
+Systems Engineering and Electronics
+
+系统工程与电子技术
+
+4.4 种子数消融实验：多起点策略的影响
+
+(1) 成功率主要来源于多起点策略。 K = 16 时
+Strict SR 稳定在 0.95 以上，K = 1 时骤降至 0.45–0.52
+
+为定量分离 Sobol 多起点策略对方法性能的贡献，
+
+——降低约 43–51 个百分点。K = 1 的 p95 误差为
+
+将种子数从默认的 K = 16 降至 K = 1（仅保留每组
+
+642–685 mm（K = 16 时为 4.3–4.6 mm），表明单种
+
+Sobol 序列的第一个种子），保持其他全部参数不变。
+
+子时大量求解陷入不可接受的局部极小值，而 16 个
+
+K = 1 时 16 个线程中仅 lane 0 执行 LM 迭代，其余
+
+Sobol 低差异起点减少了大误差失败。
+
+lane 空闲，块内候选选择退化为直接输出。如表 9 所
+
+(2) 速度与成功率之间存在明确权衡。在补充扫描
+
+示，消融结果揭示以下关键事实。
+表9
+
+中，N = 1000 时 K = 1 吞吐量为 2.55 × 104 targets/s，
+K = 16 为 1.72 × 104 targets/s；以约三分之一的吞吐
+
+种子数消融实验：K = 16 vs K = 1
+
+代价，Strict SR 从 0.522 提升至 0.954，失败样本尾部
+N K16 SR K1 SR K16 p95/mm K1 p95/mm
+100
+500
+1000
+
+0.960
+0.954
+0.954
+
+0.450
+0.502
+0.522
+
+4.38
+4.34
+4.56
+
+误差收敛。这说明默认 K = 16 是成功率优先配置，而
+
+642.2
+686.2
+685.0
+
+非纯吞吐最优配置。
+(3) 核函数启动次数与 K 无关。无论 K = 16 还
+是 K = 1，核心求解阶段均由单个 target-block kernel
+完成，调度开销始终 < 0.01% GPU 流时间。这是该方
+
+进一步扫描 K = 1, 2, 4, 8, 16 的结果显示，随着 K
+
+法区别于多阶段 GPU pipeline 的主要结构差异。
+
+增大，Strict 成功率从 K = 1 的 0.522 提升至 K = 16
+的 0.954，而吞吐量从约 2.55 × 104 targets/s 降至约
+
+(4) 与 cuRobo 的交叉对比确立范式边界。同等
+
+1.72 × 104 targets/s。K = 8 到 K = 16 仍带来 3.0 个
+
+单种子条件下，cuRobo SR 为 0.830–0.880，该方法仅为
+
+百分点的成功率提升，并将全样本 p95 从 36.1 mm 降
+
+0.450–0.522——cuRobo 的 L-BFGS 优化器局部收敛能
+
+至 4.6 mm，因此本文选择 K = 16 作为默认成功率优
+
+力更强。同等 16 种子条件下（如表 6 所示），cuRobo
+
+先配置。
+
+SR 达 0.988 但吞吐仅 1.04 × 104 ，该方法以 0.954 SR
+
+为观察多起点候选在目标维度上的分布，图 6 将
+
+实现 1.82 × 104 吞吐（1.75 倍优势）。三方对比确立
+
+random_local_50 数据中按求解难度排序后的 100 个
+
+清晰的帕累托前沿：cuRobo K=16 位于高精度端，该
+
+目标等距抽样，并绘制 16 个 Sobol seed 的候选成功等
+
+方法 K=16 位于吞吐优先且满足 Strict 阈值的区域，
+
+级。结果表明，部分目标仅少数 seed 达到 Strict，而另
+
+cuRobo K=1 为吞吐优先且失败尾部较重。该方法的定
+
+一些目标在多个 seed 上均可稳定收敛。这一现象解释
+
+位由此明确——不是通用 IK 优化器的替代品，而是在
+
+了 K = 16 相对 K = 1 的成功率提升来源：多起点并
+
+满足工程精度阈值前提下，通过单核函数融合实现更
+
+非简单增加重复计算，而是在不同 IK 分支和局部极小
+
+高吞吐的硬件-算法协同设计。
+
+之间提供候选覆盖。
+
+4.5
+
+Target-Seed 候选成功等级热图
+
+0
+
+为检验随机可达目标之外的适用边界，构造 wrist、
+elbow、shoulder 三类近奇异目标和一类近限位目标，每
+
+Strict
+
+⽬标排序（由难到易，等距抽样100个）
+
+近奇异与近限位鲁棒性实验
+
+20
+
+类覆盖 N = 100, 500, 1000。所有目标仍采用固定随机
+种子 42 并由 FK 生成，因而保持物理可达。近奇异数
+Medium
+
+40
+
+据按 q1 –q6 的物理关节编号描述：wrist singular 将 q5
+限制在 [−0.03, 0.03] rad；elbow singular 将 q3 设置为
+
+60
+
+距下限或上限 0.05 rad；shoulder singular 将 q1 限制
+
+Loose
+
+在 [−0.05, 0.05] rad，并将 q2 设置为距下限或上限 0.05
+rad。对应脚本中的 0-based index 分别为 q[4]、q[2]、
+
+80
+
+q[0] 和 q[1]。近限位数据则先随机采样关节角，再对每
+
+Fail
+
+个目标随机选择一个关节、随机选择上下限方向，并
+0
+
+1
+
+2
+
+3
+
+4
+
+5
+
+6
+
+7
+
+8
+
+9
+
+10
+
+11
+
+将其设置为距限位 0–0.087 rad。上述规则对应的 raw
+
+12 13 14 15
+
+Sobol seed / lane �-��
+
+图6
+
+target 均由同一 UR10 FK 管线生成。
+如图 7a 所示，OPT4C-K16 在 wrist 和 shoulder 类
+
+Target-Seed 候选成功等级热图
+
+型下仍保持较高成功率；但 elbow singular 下 N = 1000
+的 Strict SR 降至 0.883，明显低于随机可达目标的
+
+消融结果揭示以下关键事实：
+8
+
+Systems Engineering and Electronics
+
+系统工程与电子技术
+
+0.954。这说明 Sobol 多起点能够缓解奇异附近的局部
+
+能降低跳变幅值，不能从根本上保证关节连续性。该结
+
+极小和条件数恶化，但固定阻尼 LM 仍不能完全处理
+
+果说明简单二次平滑重排序不能替代基于上一时刻解
+
+更困难的肘部奇异区域。
+
+的 warm-start、时间参数化或连续性约束优化；本文轨
+
+近限位实验使用至少一个关节距限位小于 0.087
+
+迹实验仅用于评估 IK 分支连续性，不构成控制器级轨
+
+rad 的 FK 目标，并比较关节限位正则 ON/OFF。结
+
+迹安全性证明。
+未重排: jump=���
+
+平滑重排: jump=���
+
+4.0
+
+0
+
+OFF 的 Strict SR 分别为 0.940 和 0.943，near-limit
+
+3.5
+
+ratio 分别为 0.015 和 0.017。该结果表明当前 barrier
+
+3.0
+
+5
+
+2.5
+
+轨迹编号
+
+的主要作用不是显著提高 Strict SR，而是在保持相近
+求解质量的同时轻微降低近限位解比例；在该批 near-
+
+2.0
+
+10
+
+1.5
+
+limit 目标上，wlimit = 0.03 甚至使全样本 p95 从 9.45
+
+15
+
+mm 增至 11.90 mm。因此论文将 barrier 定位为安全
+
+19
+
+1.0
+0.5
+
+1
+
+裕度约束，而非主要收敛加速手段。
+
+10
+
+20
+
+30
+
+40
+
+49
+
+1
+
+10
+
+20
+
+轨迹步
+
+关节限位权重扫描进一步显示，在 near-limit 目标
+
+30
+
+40
+
+49
+
+wrapped ‖Δq‖2 / rad（截断到4）
+
+果如图 7b 所示，在 N = 1000, K = 16 下正则 ON 与
+
+0.0
+
+轨迹步
+
+图 8 轨迹相邻点关节跳变量热图
+
+上提高 wlimit 不会单调提升 Strict SR，且过大权重可
+能扩大失败样本尾部误差。默认 wlimit = 0.03 是保守
+折中，而不是严格最优参数。相关趋势见图 7c–d。
+(a) 近奇异⽬标
+100
+
+(b) 近限位⽬标
+100
+
+K=�
+
+80
+
+扫描。max_iter = 20 时 Strict SR 为 0.912，p95 为
+
+60
+
+60
+
+25.7 mm；增至 60 后 Strict SR 达 0.954，p95 降至 4.6
+
+40
+
+mm。继续增至 80 或 100 仅带来 0.3–0.5 个百分点的
+
+20
+
+wrist
+
+elbow
+
+(c) 限位权重扫描
+
+100
+
+1.6
+
+93.8
+
+1.4
+
+93.6
+Strict SR
+
+1.2
+
+near-limit
+
+93.4
+0
+
+10−3
+
+10−2
+
+10−1
+
+wlimit
+
+SR / % 或 p�� / mm
+
+1.8
+
+94.0
+
+near-limit ratio / %
+
+2.0
+
+94.2
+
+成功率增益，却近似线性增加计算时间，因此本文采用
+
+0
+
+shoulder
+
+OFF
+
+ON
+
+max_iter = 60 作为默认折中。该扫描与主基准属于
+
+(d) 随机⽬标权重影响
+
+80
+
+独立批次，吞吐量只用于同图内相对趋势，不反向覆盖
+
+60
+
+表 5 的主结果。
+
+40
+
+(a) 迭代次数与精度
+96
+
+20
+0
+
+p��_all
+
+(b) 迭代次数与吞吐
+
+Strict SR
+
+Strict SR
+
+0
+
+p��_all
+
+2.50
+
+25
+
+2.25
+
+95
+10−3
+
+10−2
+
+20
+
+10−1
+
+wlimit
+
+Strict SR / %
+
+0
+
+图 7 近奇异、近限位与关节限位权重的鲁棒边界分析
+
+94
+15
+93
+10
+92
+
+91
+
+4.6 轨迹连续性实验
+
+p��_all / mm
+
+40
+
+吞吐率 / 104 targets s−1
+
+⽐例 / %
+
+Strict SR / %
+
+near-limit ratio
+
+80
+
+20
+
+Strict SR / %
+
+图 9 给出了 N = 1000, K = 16 下的最大迭代次数
+
+Strict SR
+
+K=��
+
+最大迭代次数扫描
+
+4.7
+
+2.00
+1.75
+1.50
+1.25
+1.00
+0.75
+
+5
+20
+
+40
+
+60
+
+80
+
+0.50
+
+100
+
+max_iter
+
+图9
+
+真实机器人通常沿连续轨迹求解 IK，而非孤立目
+
+20
+
+40
+
+60
+
+80
+
+100
+
+max_iter
+
+最大迭代次数对成功率、误差和吞吐的影响
+
+标。本文构造 line_50、arc_50 和 random_local_50 三
+类轨迹，每类 20 条、每条 50 点。相邻点关节跳变量
+
+4.8
+
+采用旋转关节环绕差分计算，即 ∆q = atan2(sin(qt −
+qt−1 ), cos(qt − qt−1 ))，再取 6 维欧氏范数；joint jump
+
+微架构瓶颈的 PTX 级定量分析
+为进一步探究吞吐量渐近收敛的微架构成因，从
+
+PTX 汇编层面进行定量分析。
+
+统计阈值为 0.5 rad。由于单点 pose cost 选择可能在
+相邻时刻切换 IK 分支，原始 best 选择的 p95(∆q) 为
+
+寄存器压力与占用率。表 10 列出不同寄存器限制
+
+5.44–5.61 rad，jump count 为 883–893。使用候选级
+
+下主核函数的统计。无限制时每线程 194 个寄存器，限
+
+离线 smoothness rerank 后，p95(∆q) 降至 3.48–3.80
+
+制 160 时开始溢出（216 bytes spill stores），限制 128
+
+rad，jump count 降至 718–778，点级成功率和轨迹级
+
+时溢出显著增加（568 bytes spill stores/740 bytes spill
+
+成功率保持不变，如图 8 所示。由于每类轨迹包含
+
+loads）
+。RTX 4060 Laptop GPU 每 SM 65 536 寄存器，
+
+20 × 49 = 980 个相邻间隔，smoothness rerank 后 jump
+
+每线程束 32 线程 × 194 寄存器 = 6 208 寄存器，每
+
+ratio 仍约为 73.3%–79.4%，说明当前候选级重排序只
+
+SM 最多驻留 65536/6208 ≈ 10.5 线程束，每块需 2 线
+9
+
+Systems Engineering and Electronics
+
+系统工程与电子技术
+
+程束（32 线程），故每 SM 最多 5.3 块，理论占用率
+
+注：表 11 数据来自独立实验批次，其 FP64 基线（18930 tar-
+
+10.5/24 ≈ 44%。
+
+gets/s）与表 5（18226 targets/s）存在约 4% 的批次间差异，仅表
+内对比有效。
+
+表 10
+
+不同寄存器限制下的 PTX 寄存器与溢出统计
+
+Nsight Compute 动态验证。为进一步检查 PTX
+静态分析的判断，使用 NVIDIA Nsight Compute[24]
+
+限制
+
+寄存器/线程
+
+溢出存储/B
+
+溢出加载/B
+
+无限制
+
+194
+
+0
+
+0
+
+160
+
+160
+
+216
+
+212
+
+键动态指标如表 12 所示。Warp Stall Long Scoreboard
+
+128
+
+128
+
+568
+
+740
+
+占比为 83.2%，说明线程束长时间等待前序操作数就
+
+对主核函数（N = 1000, K = 16）进行运行时采样，关
+
+绪；结合代码结构，其来源可能包括 FP64 小矩阵求
+44% 的中等占用率表明当前核函数的瓶颈不是单
+
+解、三角函数、寄存器依赖和标量分支，而不能简单
+
+纯由全局内存带宽决定。结合 PTX 指令结构，长延迟
+
+等同为单一 FP64 管线延迟。Issue Slot Utilization 为
+
+依赖主要来自 6 × 6 FP64 小矩阵求解、三角函数、寄
+
+2.32%，表明指令发射单元存在大量空闲周期。Memory
+
+存器相关依赖和标量控制流。进一步优化方向不应只
+
+Throughput 仅为 3.71%，共享内存 Bank 冲突计数约
+
+放在数据搬运或 occupancy 提升，而应优先降低单迭
+
+112k 次，说明全局或共享内存带宽不是当前主要限制
+
+代小矩阵求解和超越函数的延迟；下文通过混合精度
+
+因素。
+
+消融实验对该判断进行定量检查。
+
+表 12 Nsight Compute 动态性能指标（N =1000, K=16）
+
+共享内存访问分析。候选解存储采用 kCandidateStride= 16 的列步长布局，总用量 2 064 bytes（< 5%
+
+指标
+
+实测值
+
+of 48 KB/SM）
+。Nsight Compute 采样显示共享内存相
+
+Warp Stall Long Scoreboard
+
+83.2%
+
+长延迟依赖占主导
+
+关指标远小于 FP64 指令等待和寄存器相关 stall，因
+
+Issue Slot Utilization
+
+2.32%
+
+指令发射利用率低
+
+此该部分不是当前主瓶颈。本文不把共享内存访问作
+
+Compute (SM) Throughput
+
+84.2%
+
+活跃时计算密集
+
+Memory Throughput
+
+3.71%
+
+非访存瓶颈
+
+共享内存 Bank 冲突
+
+∼112k
+
+冲突率 < 0.1%
+
+为主要贡献点。
+
+含义
+
+浮点吞吐利用率估算。以 N = 1000 为例：每目
+标约 20 次迭代 × 每迭代约 1 650 FLOP = 33 000
+FLOP/target，总计 3.3×107 FLOP 在 54.9 ms 内完成，
+Laptop GPU 理论峰值（约 180 GFLOPS）的 0.33%。
+极低的浮点利用率源于大量标量寄存器操作、超越函
+
+批量扩展趋势已在图 3 和表 6 中给出。吞吐量
+从 N = 100 的 1.50 × 104 渐近收敛至 N = 1000 的
+1.82 × 104 targets/s，符合固定开销分摊后的渐近曲线。
+
+数（sin/cos/atan2）和控制流指令——小型 6 × 6 矩阵
+
+GPU 流时间严格线性（R2 > 0.999）
+，每目标固定开销
+
+运算中传统 FLOP/s 指标不适用，这也是小矩阵 GPU
+
+≈0.055 ms，用户无需对不同批量规模进行预扫描或参
+
+计算的普遍特征。
+
+数调优即可估计吞吐量。该结果说明 target-block 映射
+
+混合精度验证实验。上述 PTX 分析表明，仅将可
+
+在 N ≤ 1000 的范围内未出现批量增大导致的性能退
+
+向量化部分改为 FP32 未必能解除主要长延迟依赖。为
+
+化。
+
+验证这一判断，将雅可比构造与 Hessian 累加迁移至
+FP32（mixed_safe 模式）
+，仅保留 6 × 6 高斯消元与收
+
+5 讨论
+
+敛判定在 FP64。结果如表 11 所示：N = 1000 时吞吐
+量仅从 1.89 × 10 提升至 1.93 × 10 targets/s（+2%）
+，
+4
+
+批量扩展性分析
+
+4.9
+
+实际 FP64 吞吐约 0.60 GFLOPS——仅为 RTX 4060
+
+4
+
+Strict SR 与 p95 基本持平。该结果说明，在当前实现
+
+5.1
+
+设计范式：帕累托前沿上的定位
+
+中，性能限制并非单独来自雅可比和 Hessian 的浮点精
+
+消融实验与公平对比共同确立了该方法在” 质量-
+
+度选择，而与寄存器级小矩阵求解、超越函数和控制流
+
+吞吐量” 帕累托前沿上的位置。cuRobo K=16 凭借
+
+共同相关。
+
+L-BFGS 的收敛能力位于高精度端（SR 0.988, p95 0.9
+mm）
+，但在本研究的 N ≤ 1000 设置下吞吐为 1.04×104
+
+表 11 混合精度消融实验（N =1000, K=16）
+配置
+FP64（基准）
+mixed_safe（FP32 J/H）
+
+targets/s。cuRobo K=1 位于吞吐优先端（7.26 × 104
+targets/s），但失败尾部较重，导致全样本 p95 明显升
+
+Strict SR 吞吐/(t·s−1 ) p95/mm
+0.954
+0.954
+
+18930
+19275
+
+高；其成功样本精度仍然较高。该方法 K=16 位于两者
+
+4.6
+4.5
+
+之间：SR 0.954、p95 4.6 mm、吞吐 1.82×104 targets/s。
+10
+
+Systems Engineering and Electronics
+
+系统工程与电子技术
+
+这一拐点定位的工程意义明确：在采样式运动规
+
+算路径的共同作用，而不是单一地来自 kernel launch
+
+划的典型场景（N ≤ 1000，单次查询需一次性高成功
+
+或调度开销。三方对比（cuRobo K=16 / 该方法 K=16
+
+率）
+，该方法提供了无需后处理、延迟确定的求解路径。
+
+/ cuRobo K=1）确立清晰的帕累托前沿。
+
+4.6 mm 的 p95 虽高于 cuRobo K=16 的 0.9 mm，但
+
+（5）鲁棒性和边界：近奇异实验显示 elbow singular
+
+满足本文 Strict 阈值；在中等精度前端任务中，1.75 倍
+
+下成功率下降至 0.883；近限位实验显示 barrier 主
+
+的吞吐增益具有实际价值。若应用场景要求亚毫米级
+
+要作为安全裕度约束而非成功率来源；轨迹实验显示
+
+精度（如精密装配）
+，cuRobo K=16 更为合适，这也划
+
+smoothness rerank 能降低 p95(∆q)，但 jump ratio 仍
+
+定了该方法的适用边界。
+
+然较高，不能充分抑制分支跳变。
+
+该方法的主要贡献由此明确为小矩阵批量计算中
+
+综上，在 N ≤ 1000、固定 6-DOF、无碰撞约束、
+
+硬件-算法协同设计带来的结构差异，而非单一优化器
+
+可达目标主要由 FK 生成的条件下，该方法提供了一种
+
+的性能超越。
+
+成功率优先、执行路径确定的 CUDA IK 实现方案。其
+优势来自 Sobol 多起点与单 kernel fusion 的协同，而
+
+5.2 可推广性与加速方向
+
+非单个 LM 优化器的局部收敛能力。本文方法当前不
+处理碰撞约束，不保证连续控制轨迹，不面向亚毫米
+
+本文框架可推广到其他串联机械臂，但需要重新
+
+级精密装配任务；其主要适用场景是固定 6-DOF 机械
+
+生成结构参数、解析雅可比计算路径、线程映射和寄
+
+臂在中小批量目标下的规划前端 IK 候选生成。对于更
+
+存器资源配置。对于 7-DOF 冗余机械臂（如 Franka
+Panda[25]），解空间维度增加且零空间优化需求更强，
+不能直接认为 UR10 上的成功率和吞吐量可平移。两
+
+大批量、更高精度、复杂碰撞约束或亚毫米装配场景，
+cuRobo 等通用 GPU 规划框架仍具有重要优势。
+后续工作包括：结合 warm-start 与连续性约束降
+
+个后续方向更值得优先研究：
+（1）利用相邻目标或上一
+
+低轨迹跳变；引入奇异鲁棒阻尼；在真实 UR calibration
+
+时刻解进行 seed warm-start，减少平均迭代次数并改
+
+模型和 7-DOF 冗余机械臂上重新评估成功率、吞吐量
+
+善轨迹连续性；
+（2）引入奇异鲁棒阻尼或任务相关重排
+
+和寄存器资源。
+
+序，缓解 elbow singular 和 near-limit 目标中的失败尾
+部。
+
+参考文献
+6
+
+结论
+
+[1] Siciliano B, Sciavicco L, Villani L, et al. Robotics:
+modelling, planning and control[M]. Springer,
+
+针对固定 6-DOF 中小批量 IK 中单种子收敛概率
+
+2010.
+
+不足与多阶段 GPU pipeline 固定开销较高的问题，本
+研究提出结构感知单核融合 CUDA 实现。主要结论如
+
+[2] Lynch K M, Park F C. Modern robotics: mechan-
+
+下：
+（1）Sobol 多起点 + Kernel Fusion 协同设计：
+将 K = 16 Sobol 种子、解析雅可比、LM 迭代和块内
+候选选择融合进单个 target-block kernel。种子数扫描
+
+ics, planning, and control[M]. Cambridge: Cambridge University Press, 2017.
+[3] LaValle S M. Planning algorithms[M]. Cambridge
+
+表明，K 从 1 增至 16 时 Strict SR 从 0.522 提升至
+
+University Press, 2006.
+
+0.954，全样本 p95 从 685.0 mm 降至 4.6 mm。
+（2）融合 FK + 解析雅可比：单次 FK 输出 Tee ,
+
+[4] Sucan I A, Moll M, Kavraki L E. The Open Mo-
+
+pi , zi ，雅可比由 6 次叉积组装，每迭代 FK 调用从有
+
+tion Planning Library[J]. IEEE Robotics & Au-
+
+限差分所需的多次扰动评估降至 1 次结构化评估，减
+
+tomation Magazine, 2012, 19(4): 72-82.
+
+少了重复 FK 调用并提高了 LM 方向构造的一致性。
+（3）低控制流复杂度 LM + 寄存器级 6 × 6 求解：
+摒弃 acceptance-rejection 回滚分支，降低控制流复杂
+
+[5] Thomason W, Kingston Z, Kavraki L E. Motions
+in microseconds via vectorized sampling-based
+planning[C]//2024 IEEE International Conference
+
+度；高斯消元主要在寄存器内完成。
+
+on Robotics and Automation (ICRA). IEEE, 2024:
+
+（4）公平对比确立帕累托前沿定位：同等 16 种子
+
+8749-8756.
+
+下，cuRobo SR 0.988 位于高精度端，该方法 SR 0.954
+满足 Strict 阈值且吞吐为其 1.75 倍。该优势主要来自
+
+[6] NVIDIA.
+
+单核函数融合减少中间同步与固定结构 LM 较轻量计
+
+ming
+11
+
+CUDA
+guide[EB/OL].
+
+C++
+
+program[2026-06-10].
+
+Systems Engineering and Electronics
+
+系统工程与电子技术
+
+https://docs.nvidia.com/cuda/
+
+on Robotics and Automation, 1997, 13(3): 398-
+
+cuda-c-programming-guide/.
+
+410.
+
+[7] Nickolls J, Buck I, Garland M, et al. Scalable par-
+
+[17] Universal
+
+Robots.
+
+Universal
+
+Robots
+
+ROS2
+
+allel programming with CUDA[J]. Queue, 2008,
+
+description[EB/OL].
+
+6(2): 40-53.
+
+//github.com/UniversalRobots/Universal_
+
+[8] Sundaralingam B, et al. cuRobo:
+
+[2026-06-10].
+
+https:
+
+Robots_ROS2_Description.
+
+parallelized
+
+collision-free robot motion generation[EB/OL].
+
+[18] Buss S R. Introduction to inverse kinematics with
+
+arXiv: 2310.17274, 2023.
+
+Jacobian transpose, pseudoinverse and damped
+least squares methods[J]. IEEE Transactions on
+
+[9] Hsiao Y S, Hari S K S, Sundaralingam B, et
+
+Robotics, 2004, 20(1): 1-18.
+
+al. VaPr: variable-precision tensors to accelerate
+robot motion planning[C]//2023 IEEE/RSJ In-
+
+[19] Levenberg K. A method for the solution of certain
+
+ternational Conference on Intelligent Robots and
+
+non-linear problems in least squares[J]. Quarterly
+
+Systems (IROS). IEEE, 2023.
+
+of Applied Mathematics, 1944, 2: 164-168.
+
+[10] Yasutake C, Kingston Z, Plancher B. HJCDIK:
+
+GPU-accelerated
+
+inverse
+
+[20] Marquardt D W. An algorithm for least-squares
+
+kinematics
+
+estimation of nonlinear parameters[J]. Journal of
+
+through batched hybrid Jacobian coordinate
+
+the Society for Industrial and Applied Mathemat-
+
+descent[EB/OL]. arXiv: 2510.07514, 2025.
+
+ics, 1963, 11(2): 431-441.
+
+[11] Abuelsamen L, Rana H, Lu H W, et al. Industrial
+
+[21] Sobol I M. On the distribution of points in a cube
+
+robot motion planning with GPUs: integration
+
+and the approximate evaluation of integrals[J].
+
+of cuRobo for extended DOF systems[EB/OL].
+
+USSR Computational Mathematics and Mathe-
+
+arXiv: 2508.04146, 2025.
+
+matical Physics, 1967, 7(4): 86-112.
+
+[12] Whitney D E. Resolved motion rate control of ma-
+
+[22] Abdelfattah A, Haidar A, Tomov S, et al. Batched
+
+nipulators and human prostheses[J]. IEEE Trans-
+
+one-sided factorizations of tiny matrices using
+
+actions on Man-Machine Systems, 1969, 10(2): 47-
+
+GPUs: challenges and countermeasures[J]. Jour-
+
+53.
+
+nal of Computational Science, 2018, 26: 226-236.
+
+[13] Wampler C W. Manipulator inverse kinematic so-
+
+[23] NVIDIA.
+
+lutions based on vector formulations and damped
+
+tices
+
+least-squares methods[J]. IEEE Transactions on
+
+CUDA
+
+C++
+
+guide[EB/OL].
+
+best
+
+prac-
+
+[2026-06-10].
+
+https://docs.nvidia.com/cuda/
+
+Systems, Man, and Cybernetics, 1986, 16(1): 93-
+
+cuda-c-best-practices-guide/.
+
+101.
+
+[24] NVIDIA. Nsight Compute user guide[EB/OL].
+
+[14] Chan S K, Lawrence P D. General inverse
+
+[2026-06-10].
+
+kinematics with the error damped pseudoin-
+
+https://docs.nvidia.com/
+
+nsight-compute/.
+
+verse[C]//Proceedings. 1988 IEEE International
+Conference on Robotics and Automation. IEEE,
+
+[25] Chitta S, Sucan I, Cousins S. MoveIt![J]. IEEE
+
+1988: 834-839.
+
+Robotics & Automation Magazine, 2012, 19(1):
+18-19.
+
+[15] Nakamura Y, Hanafusa H. Inverse kinematic solutions with singularity robustness for robot ma-
+
 作者简介
-刘霄鹏（2005-），男，本科，主要研究方向为机器人运动学、GPU 并行计算。E-mail：（预留）
+
+nipulator control[J]. Journal of Dynamic Systems,
+Measurement, and Control, 1986, 108(3): 163-171.
+
+刘霄鹏（2005–），男，本科，主要研究方向为机器人运
+动学、GPU 并行计算。
+
+[16] Chiaverini S. Singularity-robust task-priority re-
+
+E-mail：182625516@qq.com
+
+dundancy resolution for real-time kinematic control of robot manipulators[J]. IEEE Transactions
+12
+
+

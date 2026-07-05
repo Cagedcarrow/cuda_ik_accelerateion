@@ -1,6 +1,6 @@
 # 论文补充实验工作区
 
-本目录用于存放 `论文/paper.tex` 修订前后的补充实验、图表、验收报告和只在补充实验中使用的 runner 变体。除最终拷贝到 `论文/绘图/` 的 PDF 图外，新增脚本、CSV、日志和中间产物均保留在本目录下。
+本目录用于存放 `论文/paper.tex` 修订前后的补充实验、图表、验收报告和只在补充实验中使用的 runner 变体。当前主文图由统一脚本生成到 `论文/figures/` 的 SVG 文件；新增脚本、CSV、日志和中间产物均保留在本目录下。
 
 ## 目录
 
@@ -55,22 +55,21 @@ python3 data/experiments/补充实验/scripts/validate_outputs.py
 
 `prepare_limit_weight_runner.py` 会在 `runner_variant/` 下复制并构建只用于补充实验的 runner，支持 `--limit-weight`。该变体不修改 `src/cuda` 主线源码。
 
-## 已生成图件
+## 当前论文图件
 
-`figures/` 中的 PDF 已同步到 `论文/绘图/`，供 `论文/paper.tex` 直接引用：
+最新主文图由仓库根目录下的 `standard_robot_cuda_ik/scripts/plot_all_figures.py` 统一生成，SVG 输出到 `论文/figures/`，PNG 预览输出到 `论文/figures_preview/`。正文当前使用 1 张流程图和 8 张数据图：
 
-- `fig_pareto_throughput_success.pdf`
-- `fig_kernel_time_breakdown.pdf`
-- `fig_threshold_scan.pdf`
-- `fig_seed_count_scan.pdf`
-- `fig_near_singular_sr.pdf`
-- `fig_near_limit_barrier.pdf`
-- `fig_barrier_weight_scan.pdf`
-- `fig_trajectory_delta_q.pdf`
-- `fig_lm_iter_scan.pdf`
-- `fig_nsys_timeline_opt4c.pdf`
-- `fig_thread_mapping_redraw.pdf`
-- `fig_algorithm_pipeline_redraw.pdf`
+- `fig1_thread_mapping.svg`
+- `fig2_time_breakdown.svg`
+- `fig3_static_performance.svg`
+- `fig4_pareto_front.svg`
+- `fig5_threshold_scan.svg`
+- `fig6_seed_success_heatmap.svg`
+- `fig7_trajectory_deltaq_heatmap.svg`
+- `fig8_robustness_boundary.svg`
+- `fig9_iteration_tradeoff.svg`
+
+其中 `fig6_seed_success_heatmap.svg` 和 `fig7_trajectory_deltaq_heatmap.svg` 分别依赖派生数据 `candidate_success_matrix.csv` 与 `trajectory_deltaq_matrix.csv`。旧的 `fig_kernel_time_breakdown.pdf`、`fig_nsys_timeline_opt4c.pdf`、`fig_seed_count_scan.pdf`、`fig_near_singular_sr.pdf`、`fig_near_limit_barrier.pdf`、`fig_barrier_weight_scan.pdf`、`fig_trajectory_delta_q.pdf`、`fig_lm_iter_scan.pdf` 和 `fig4_scalability.pdf` 不再被当前 `paper.tex` 引用。
 
 ## 尚未纳入当前论文主线的扩展项
 

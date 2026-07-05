@@ -81,14 +81,16 @@ data/
     ├── inputs/              # Dense N=100-1000 targets + seeds (K=16)
     ├── results/             # Main benchmark CSVs (10 N values)
     └── 补充实验/
-        ├── inputs/          # K=1 seed files
-        ├── results/         # K=1, cuRobo K=16, FP32 mixed precision CSVs
+        ├── inputs/          # K=1 seed files, near-limit/near-singular/trajectory inputs
+        ├── results/         # K=1, cuRobo K=16, FP32 mixed precision, barrier scan CSVs
+        ├── reports/         # Experiment reports & review documents
+        ├── figures/         # Supplementary experiment figures
         └── *.py             # Benchmark scripts (see README.md)
 ```
 
 ## Paper
 
-**Final version**: `论文/paper.tex` → `论文/paper.pdf` (10 pages, xelatex).
+**Final version**: `论文/paper.tex` → `论文/paper.pdf` (11 pages, xelatex).
 
 ```
 论文/
@@ -118,7 +120,7 @@ Compile: `cd 论文 && latexmk -xelatex paper.tex`
 
 ### Paper narrative
 
-Core contribution is **hardware-fused multi-start paradigm**, not optimizer superiority. Three-way Pareto frontier: cuRobo K=16 (quality ceiling, SR 0.988) → OPT4C K=16 (throughput拐点, SR 0.954, 1.75× faster) → cuRobo K=1 (extreme throughput, SR 0.840, quality unacceptable). All 15 references are cited in text.
+Core contribution is **hardware-fused multi-start paradigm**, not optimizer superiority. Three-way Pareto frontier: cuRobo K=16 (quality ceiling, SR 0.988) → OPT4C K=16 (throughput拐点, SR 0.954, 1.75× faster) → cuRobo K=1 (extreme throughput, SR 0.840, quality unacceptable). All 26 references are cited in text.
 
 ## Python Scripts
 
@@ -133,6 +135,7 @@ Core contribution is **hardware-fused multi-start paradigm**, not optimizer supe
 - `run_k1_benchmark.py` — K=1 ablation + comparison vs cuRobo
 - `run_curobo_k16.py` — cuRobo K=16 fair comparison + three-way analysis
 - `run_mixed_precision.py` — FP32 mixed precision ablation
+- Supplementary data: barrier_scan (w_limit sweeping), near_limit, near_singular, seed_scan, trajectory
 - `generate_dense_inputs.py` — Slice N=200-900 targets/seeds from N=1000 base
 
 ### UR10 tools
