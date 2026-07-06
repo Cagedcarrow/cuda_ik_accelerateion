@@ -42,7 +42,7 @@
 |---|---|---|
 | `fig1_thread_mapping.pdf` | 重画为低饱和灰阶 Target-Block 架构图，图内文字改为英文 ASCII | 无 CSV，脚本绘制结构示意 |
 | `fig2_time_breakdown.pdf` | 改为横向堆叠条形图，仅区分 Core kernel 与 Non-kernel overhead | `kernel_time_breakdown.csv` |
-| `fig3_static_performance.pdf` | 只保留 OPT4C-K16 与 cuRobo-Graph-K16 的同种子数公平对比 | `fair_curobo_k16_summary.csv` |
+| `fig3_static_performance.pdf` | 只保留 SAKF-IK-K16 与 cuRobo-Graph-K16 的同种子数公平对比 | `fair_curobo_k16_summary.csv` |
 | `fig4_pareto_front.pdf` | 删除 colorbar，改为四点 Pareto 图并标注 `p95_all` | `fair_curobo_k16_summary.csv` |
 | `fig5_seed_success_heatmap.pdf` | 使用低饱和离散色图，按 Strict seed 数量和 best pose cost 排序 | `trajectory_dump_candidates_random_local_50_N1000_K16.csv`，派生 `candidate_success_matrix.csv` |
 | `fig6_robustness_boundary.pdf` | 简化为 Near singular success rate 与 Near-limit ratio 两个 panel | `near_singular_summary.csv`、`near_limit_barrier_summary.csv` |

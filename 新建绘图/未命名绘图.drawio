@@ -1,0 +1,115 @@
+<mxfile host="Electron">
+  <diagram name="第 1 页" id="_dT2jiYF2rVppd1SlOPf">
+    <mxGraphModel dx="1414" dy="875" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="OkbA2cVHjvqag_yg-mua-1" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" value="Grid：N 个线程块" vertex="1">
+          <mxGeometry height="60" width="120" x="60" y="110" as="geometry" />
+        </mxCell>
+        <mxCell id="OkbA2cVHjvqag_yg-mua-2" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" value="第 i 个线程块" vertex="1">
+          <mxGeometry height="60" width="110" x="240" y="110" as="geometry" />
+        </mxCell>
+        <mxCell id="OkbA2cVHjvqag_yg-mua-3" edge="1" parent="1" source="OkbA2cVHjvqag_yg-mua-1" style="shape=flexArrow;endArrow=classic;html=1;rounded=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="350" y="220" as="sourcePoint" />
+            <mxPoint x="240" y="140" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="OkbA2cVHjvqag_yg-mua-4" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" value="目标点 &lt;span class=&quot;katex&quot;&gt;&lt;span class=&quot;katex-mathml&quot;&gt;&lt;math xmlns=&quot;http://www.w3.org/1998/Math/MathML&quot;&gt;&lt;mrow&gt;&lt;msub&gt;&lt;mi&gt;T&lt;/mi&gt;&lt;mi&gt;i&lt;/mi&gt;&lt;/msub&gt;&lt;/mrow&gt;T_i&lt;/math&gt;&lt;/span&gt;&lt;br&gt;&lt;/span&gt;" vertex="1">
+          <mxGeometry height="60" width="120" x="400" y="110" as="geometry" />
+        </mxCell>
+        <mxCell id="OkbA2cVHjvqag_yg-mua-5" edge="1" parent="1" source="OkbA2cVHjvqag_yg-mua-2" style="shape=flexArrow;endArrow=classic;html=1;rounded=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="OkbA2cVHjvqag_yg-mua-4" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="350" y="220" as="sourcePoint" />
+            <mxPoint x="400" y="170" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="OkbA2cVHjvqag_yg-mua-6" parent="1" style="whiteSpace=wrap;html=1;rounded=1;fillColor=#ffe6cc;strokeColor=#d79b00;" value="最优关节解 &lt;span class=&quot;katex&quot;&gt;&lt;span class=&quot;katex-mathml&quot;&gt;&lt;math xmlns=&quot;http://www.w3.org/1998/Math/MathML&quot;&gt;&lt;mrow&gt;&lt;msup&gt;&lt;mi&gt;q&lt;/mi&gt;&lt;mo&gt;∗&lt;/mo&gt;&lt;/msup&gt;&lt;/mrow&gt;q^*&lt;/math&gt;&lt;/span&gt;&lt;br&gt;&lt;/span&gt;" vertex="1">
+          <mxGeometry height="50" width="120" x="580" y="115" as="geometry" />
+        </mxCell>
+        <mxCell id="OkbA2cVHjvqag_yg-mua-9" edge="1" parent="1" source="OkbA2cVHjvqag_yg-mua-4" style="shape=flexArrow;endArrow=classic;html=1;rounded=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="OkbA2cVHjvqag_yg-mua-6" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="350" y="220" as="sourcePoint" />
+            <mxPoint x="400" y="170" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="OkbA2cVHjvqag_yg-mua-10" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="Lane 0–15：Sobol 初始种子" vertex="1">
+          <mxGeometry height="60" width="120" x="160" y="230" as="geometry" />
+        </mxCell>
+        <mxCell id="OkbA2cVHjvqag_yg-mua-11" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="Lane 16–31：空闲" vertex="1">
+          <mxGeometry height="60" width="120" x="160" y="310" as="geometry" />
+        </mxCell>
+        <mxCell id="OkbA2cVHjvqag_yg-mua-39" edge="1" parent="1" source="OkbA2cVHjvqag_yg-mua-13" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=0;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0.5;entryY=1;entryDx=0;entryDy=0;" target="OkbA2cVHjvqag_yg-mua-6">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="OkbA2cVHjvqag_yg-mua-13" parent="1" style="strokeWidth=2;html=1;shape=mxgraph.flowchart.multi-document;whiteSpace=wrap;boundedLbl=1;fillColor=#f8cecc;strokeColor=#b85450;" value="Lane 0 负责最优解筛选" vertex="1">
+          <mxGeometry height="60" width="88" x="596" y="280" as="geometry" />
+        </mxCell>
+        <mxCell id="OkbA2cVHjvqag_yg-mua-14" parent="1" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#d0cee2;strokeColor=#56517e;" value="候选解生成 → 阻尼 LM 优化 → 关节限位正则化 → FK 结果校验" vertex="1">
+          <mxGeometry height="60" width="430" x="199" y="430" as="geometry" />
+        </mxCell>
+        <mxCell id="OkbA2cVHjvqag_yg-mua-20" edge="1" parent="1" source="OkbA2cVHjvqag_yg-mua-10" style="curved=1;endArrow=classic;html=1;rounded=0;exitX=0;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="OkbA2cVHjvqag_yg-mua-14" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <Array as="points">
+              <mxPoint x="110" y="370" />
+            </Array>
+            <mxPoint x="90" y="270" as="sourcePoint" />
+            <mxPoint x="140" y="220" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="OkbA2cVHjvqag_yg-mua-23" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="融合式 FK + 雅可比 + LM 求解" vertex="1">
+          <mxGeometry height="60" width="170" x="330" y="230" as="geometry" />
+        </mxCell>
+        <mxCell id="OkbA2cVHjvqag_yg-mua-27" edge="1" parent="1" source="OkbA2cVHjvqag_yg-mua-10" style="shape=flexArrow;endArrow=classic;html=1;rounded=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;" target="OkbA2cVHjvqag_yg-mua-23" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="350" y="220" as="sourcePoint" />
+            <mxPoint x="400" y="170" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="OkbA2cVHjvqag_yg-mua-28" parent="1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" value="共享候选解缓冲区" vertex="1">
+          <mxGeometry height="60" width="120" x="330" y="310" as="geometry" />
+        </mxCell>
+        <mxCell id="OkbA2cVHjvqag_yg-mua-29" edge="1" parent="1" source="OkbA2cVHjvqag_yg-mua-11" style="shape=flexArrow;endArrow=classic;html=1;rounded=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;width=8;endSize=3;entryX=0;entryY=0.5;entryDx=0;entryDy=0;" target="OkbA2cVHjvqag_yg-mua-28" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <Array as="points">
+              <mxPoint x="330" y="340" />
+            </Array>
+            <mxPoint x="390" y="360" as="sourcePoint" />
+            <mxPoint x="440" y="310" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="OkbA2cVHjvqag_yg-mua-30" edge="1" parent="1" source="OkbA2cVHjvqag_yg-mua-11" style="endArrow=classic;html=1;rounded=0;exitX=0.45;exitY=1.05;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0.035;entryY=-0.033;entryDx=0;entryDy=0;entryPerimeter=0;" target="OkbA2cVHjvqag_yg-mua-14" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="390" y="360" as="sourcePoint" />
+            <mxPoint x="310" y="400" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="OkbA2cVHjvqag_yg-mua-32" edge="1" parent="1" source="OkbA2cVHjvqag_yg-mua-28" style="endArrow=classic;html=1;rounded=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.444;entryY=0.067;entryDx=0;entryDy=0;entryPerimeter=0;" target="OkbA2cVHjvqag_yg-mua-14" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="350" y="430" as="sourcePoint" />
+            <mxPoint x="390" y="420" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="OkbA2cVHjvqag_yg-mua-33" edge="1" parent="1" source="OkbA2cVHjvqag_yg-mua-23" style="endArrow=classic;html=1;rounded=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;entryPerimeter=0;" target="OkbA2cVHjvqag_yg-mua-13" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="390" y="360" as="sourcePoint" />
+            <mxPoint x="440" y="310" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="OkbA2cVHjvqag_yg-mua-34" edge="1" parent="1" source="OkbA2cVHjvqag_yg-mua-28" style="endArrow=classic;html=1;rounded=0;exitX=1;exitY=0.5;exitDx=0;exitDy=0;entryX=0.045;entryY=0.617;entryDx=0;entryDy=0;entryPerimeter=0;" target="OkbA2cVHjvqag_yg-mua-13" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <mxPoint x="520" y="380" as="sourcePoint" />
+            <mxPoint x="570" y="330" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="OkbA2cVHjvqag_yg-mua-36" edge="1" parent="1" source="OkbA2cVHjvqag_yg-mua-13" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=0.88;exitDx=0;exitDy=0;exitPerimeter=0;entryX=0.909;entryY=0.033;entryDx=0;entryDy=0;entryPerimeter=0;" target="OkbA2cVHjvqag_yg-mua-14">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="OkbA2cVHjvqag_yg-mua-41" edge="1" parent="1" source="OkbA2cVHjvqag_yg-mua-2" style="edgeStyle=orthogonalEdgeStyle;rounded=0;orthogonalLoop=1;jettySize=auto;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.341;entryY=0.083;entryDx=0;entryDy=0;entryPerimeter=0;" target="OkbA2cVHjvqag_yg-mua-23">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

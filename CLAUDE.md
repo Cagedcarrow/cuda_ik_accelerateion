@@ -70,6 +70,57 @@ Single source file: `src/cuda/cuda_v4_runner.cu`. Key design features:
 | `src/cuda/cuda_utilities.cuh` | Device helpers (FK, Rodrigues, pose_error, LDLT), `__constant__` declarations, CUDA_CHECK |
 | `include/standard_robot_cuda_ik/generated/ur10_model_constants.h` | Auto-generated from URDF: segment origins, axes, joint limits |
 
+## Paper Status
+
+**已终稿定稿**，投稿《系统工程与电子技术》。
+
+| Item | Details |
+|------|---------|
+| Title | 面向小矩阵批量逆运动学的 CUDA 单核函数融合求解 |
+| English Title | Single-Kernel Fusion for Tiny-Matrix Batch Inverse Kinematics on CUDA |
+| Pages | 11 pages |
+| Compiler | xelatex (CTeX) |
+| Format | `论文/paper.tex` → `论文/paper.pdf` |
+| Formats | .tex / .pdf / .docx / .md |
+| Submission package | `../论文定稿/` (standalone directory with all assets) |
+| References | 23 entries (all post-2020 except 5 foundational classics) |
+
+### Paper directory structure
+
+```
+论文/
+├── paper.tex           # Final LaTeX source (11 pages, xelatex)
+├── paper.pdf           # Compiled PDF
+├── paper.md            # Markdown version with rendered figures
+├── paper.docx          # Word version
+├── paper.txt           # Plain text for plagiarism check
+├── .latexmkrc          # Force xelatex
+├── figures/            # Figure PDFs for data plots (fig3-fig7)
+├── paper_md_figures/   # PNG figures for Markdown rendering
+├── 绘图/               # 5 source figures (PDF + SVG + draw.io)
+├── 格式模板/           # Journal formatting reference
+├── 计划/               # Reviewer comments + revision strategy
+└── 名词解释/           # 47 technical terms glossary (CUDA/Robotics/Numerical)
+```
+
+Compile: `cd 论文 && latexmk -xelatex paper.tex`
+
+### Paper key findings (all supported by experiment data in `data/experiments/`)
+
+| Experiment | Key Result | Paper Location |
+|-----------|-----------|---------------|
+| OPT4C K=16 (main) | SR 0.940-0.960, throughput 15k-18k, p95 4.3-5.5mm | Table 2, §4.1 |
+| K=1 ablation | SR collapses to 0.45-0.52, p95 surges to 642-685mm | Table 6, §4.4 |
+| cuRobo K=16 fair comparison | SR 0.988 (quality ceiling), but throughput only 10k | Table 3, §4.2 |
+| cuRobo K=1 (default) | Throughput 72k but SR only 0.84 | Table 3, §4.2 |
+| FP32 mixed precision | Only +2% throughput, bottleneck is FP64 linear solve | Table 8, §4.8 |
+| Nsight Compute | Long Scoreboard 83.2%, Issue Slot 2.32% | Table 9, §4.8 |
+| PTX analysis | 194 registers/thread, ~44% occupancy, zero bank conflicts | Table 7, §4.8 |
+
+### Paper narrative
+
+Core contribution is **hardware-algorithm co-design for tiny-matrix batch computation**, not optimizer superiority. Three-way Pareto frontier: cuRobo K=16 (quality ceiling, SR 0.988) → OPT4C K=16 (throughput inflection, SR 0.954, 1.75× faster) → cuRobo K=1 (extreme throughput, SR 0.840, quality unacceptable). 23 references, all cited in text.
+
 ## Data
 
 ```
@@ -87,40 +138,6 @@ data/
         ├── figures/         # Supplementary experiment figures
         └── *.py             # Benchmark scripts (see README.md)
 ```
-
-## Paper
-
-**Final version**: `论文/paper.tex` → `论文/paper.pdf` (11 pages, xelatex).
-
-```
-论文/
-├── paper.tex           # Final LaTeX source
-├── paper.pdf           # Compiled PDF (11 pages)
-├── paper.txt           # Plain text for plagiarism check
-├── .latexmkrc          # Force xelatex
-├── 绘图/               # 5 figures (PDF + SVG + draw.io, bilingual captions)
-├── 格式模板/           # Journal formatting reference
-├── 计划/               # Reviewer comments + revision strategy
-└── 名词解释/           # 47 technical terms glossary (CUDA/Robotics/Numerical)
-```
-
-Compile: `cd 论文 && latexmk -xelatex paper.tex`
-
-### Paper key findings (all supported by experiment data in `data/experiments/`)
-
-| Experiment | Key Result | Paper Location |
-|-----------|-----------|---------------|
-| OPT4C K=16 (main) | SR 0.940-0.960, throughput 15k-18k, p95 4.3-5.5mm | Table 5, §4.1 |
-| K=1 ablation | SR collapses to 0.45-0.52, p95 surges to 642-685mm | Table 7, §4.3 |
-| cuRobo K=16 fair comparison | SR 0.988 (quality ceiling), but throughput only 10k | Table 6, §4.2 |
-| cuRobo K=1 (default) | Throughput 72k but SR only 0.84 | Table 6, §4.2 |
-| FP32 mixed precision | Only +2% throughput, bottleneck is FP64 linear solve | Table 8, §4.4 |
-| Nsight Compute | Long Scoreboard 83.2%, Issue Slot 2.32% | Table 9, §4.4 |
-| PTX analysis | 194 registers/thread, ~44% occupancy, zero bank conflicts | Table 10, §4.4 |
-
-### Paper narrative
-
-Core contribution is **hardware-fused multi-start paradigm**, not optimizer superiority. Three-way Pareto frontier: cuRobo K=16 (quality ceiling, SR 0.988) → OPT4C K=16 (throughput拐点, SR 0.954, 1.75× faster) → cuRobo K=1 (extreme throughput, SR 0.840, quality unacceptable). All 26 references are cited in text.
 
 ## Python Scripts
 
@@ -164,6 +181,21 @@ Nsight Compute was run on the main kernel (N=1000, K=16):
 - Memory Throughput: 3.71% → not memory-bound
 
 PTX static analysis: 194 registers/thread, ~44% theoretical occupancy, zero spill at default.
+
+## Recent Updates
+
+- **2026-07-06**: Paper title changed to "面向小矩阵批量逆运动学的 CUDA 单核函数融合求解"
+- **2026-07-06**: References updated: 8 old (1969-2008) removed, 6 new (2024-2025) added
+- **2026-07-06**: Full paper rewrite per 《系统工程与电子技术》journal template
+- **2026-07-06**: 论文定稿/ created with .tex/.pdf/.docx/.md formats
+- **2026-07-06**: Zotero MCP integration (zoteus) with cloud API
+
+## Zotero Integration
+
+Zoteus MCP server is configured to access the user's Zotero library:
+- Tool prefix: `mcp__zoteus__`
+- Access: Local API + Cloud Web API (user 20967877)
+- Usage: `zotero_search_items`, `zotero_scholar`, `zotero_import` (by DOI), etc.
 
 ## Historical Code (仅供参考)
 

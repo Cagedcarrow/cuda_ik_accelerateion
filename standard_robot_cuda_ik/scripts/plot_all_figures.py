@@ -50,16 +50,19 @@ TRAJ_BEST = RESULTS / "trajectory_dump_best_random_local_50_N1000_K16.csv"
 
 
 def configure_style() -> None:
-    family = "DejaVu Serif"
-
+    cjk_font = Path("/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc")
+    cjk_family = "Noto Sans CJK SC"
+    if cjk_font.exists():
+        fm.fontManager.addfont(str(cjk_font))
+        cjk_family = fm.FontProperties(fname=str(cjk_font)).get_name()
     mpl.rcParams.update(
         {
-            "font.family": family,
-            "font.serif": ["Times New Roman", "DejaVu Serif"],
+            "font.family": "sans-serif",
+            "font.sans-serif": [cjk_family, "Noto Sans CJK SC", "WenQuanYi Micro Hei", "SimHei", "DejaVu Sans"],
             "mathtext.fontset": "stix",
-            "font.size": 8.5,
-            "axes.titlesize": 9.5,
-            "axes.labelsize": 8.5,
+            "font.size": 7.5,
+            "axes.titlesize": 8.5,
+            "axes.labelsize": 7.5,
             "xtick.labelsize": 8,
             "ytick.labelsize": 8,
             "legend.fontsize": 7.5,
@@ -107,12 +110,13 @@ def pct(v: pd.Series | np.ndarray) -> np.ndarray:
 
 
 def method_label(method: str, k: int | float | str | None = None) -> str:
-    base = str(method).replace("cuRobo-Graph", "cuRobo")
-    if "-K" in base:
+    base = str(method).replace("OPT4C", "本文方法").replace("cuRobo-Graph", "对比方法")
+    base = base.replace("-K16", "-16起点").replace("-K1", "-1起点")
+    if "起点" in base:
         return base
     if k is None or pd.isna(k):
         return base
-    return f"{base}-K{int(k)}"
+    return f"{base}-{int(k)}起点"
 
 
 def annotate_panel(ax: plt.Axes, letter: str, title: str) -> None:
@@ -198,17 +202,17 @@ def draw_time_breakdown() -> None:
     y = np.arange(len(show))
     kernel = show["kernel_percent"].to_numpy(dtype=float)
     non_kernel = 100.0 - kernel
-    labels = [f"N={int(n)}" for n in show["N"]]
+    labels = [f"目标数={int(n)}" for n in show["N"]]
     fig, ax = plt.subplots(figsize=(6.2, 2.45), constrained_layout=True)
-    ax.barh(y, kernel, color="#bdbdbd", edgecolor="white", linewidth=0.6, label="Core kernel")
-    ax.barh(y, non_kernel, left=kernel, color="#4d4d4d", edgecolor="white", linewidth=0.6, label="Non-kernel overhead")
+    ax.barh(y, kernel, color="#bdbdbd", edgecolor="white", linewidth=0.6, label="核心求解")
+    ax.barh(y, non_kernel, left=kernel, color="#4d4d4d", edgecolor="white", linewidth=0.6, label="非求解开销")
     for idx, nk in enumerate(non_kernel):
         ax.text(100.35, idx, f"{nk:.3f}%", va="center", ha="left", fontsize=7.5)
-    ax.text(100.35, len(show) - 0.25, "Non-kernel < 0.3%", va="bottom", ha="left", fontsize=8.0, color="#333333")
+    ax.text(100.35, len(show) - 0.25, "非求解开销小于0.3%", va="bottom", ha="left", fontsize=8.0, color="#333333")
     ax.set_yticks(y, labels)
     ax.set_xlim(0, 103.2)
-    ax.set_xlabel("GPU stream time share / %")
-    ax.set_title("Core kernel dominates GPU stream time", fontweight="bold")
+    ax.set_xlabel("流时间占比/%")
+    ax.set_title("核心求解占主要时间", fontweight="bold")
     ax.grid(axis="x")
     ax.legend(frameon=False, ncol=2, loc="lower center", bbox_to_anchor=(0.5, -0.34))
     save_fig(fig, "fig2_time_breakdown")
@@ -217,12 +221,12 @@ def draw_time_breakdown() -> None:
 def draw_static_performance() -> None:
     df = read_csv(FAIR)
     series = [
-        ("OPT4C-K16", "#4e79a7", "o", "OPT4C-K16"),
-        ("cuRobo-Graph-K16", "#7f7f7f", "s", "cuRobo-Graph-K16"),
+        ("OPT4C-K16", "#4e79a7", "o", "本文方法-16起点"),
+        ("cuRobo-Graph-K16", "#7f7f7f", "s", "对比方法-16起点"),
     ]
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(6.9, 2.95), constrained_layout=True)
-    annotate_panel(ax1, "a", "Throughput")
-    annotate_panel(ax2, "b", "Strict success rate")
+    annotate_panel(ax1, "a", "吞吐率")
+    annotate_panel(ax2, "b", "严格成功率")
     for method, color, marker, label in series:
         sub = df[df["method"] == method].sort_values("N")
         if sub.empty:
@@ -232,9 +236,9 @@ def draw_static_performance() -> None:
     for ax in (ax1, ax2):
         ax.set_xticks([100, 500, 1000])
         ax.grid(True)
-        ax.set_xlabel("Number of targets N")
-    ax1.set_ylabel(r"Throughput / $10^4$ targets s$^{-1}$")
-    ax2.set_ylabel("Strict SR / %")
+        ax.set_xlabel("目标数量/个")
+    ax1.set_ylabel("吞吐率/(万目标/s)")
+    ax2.set_ylabel("严格成功率/%")
     ax2.set_ylim(0, 104)
     ax1.legend(frameon=False, loc="best")
     save_fig(fig, "fig3_static_performance")
@@ -244,14 +248,14 @@ def draw_pareto_front() -> None:
     df = read_csv(FAIR)
     n1000 = df[(df["N"] == 1000) & (df["method"].isin(["OPT4C-K1", "OPT4C-K16", "cuRobo-Graph-K1", "cuRobo-Graph-K16"]))].copy()
     n1000["label"] = [method_label(m, None) for m in n1000["method"]]
-    order = ["OPT4C-K1", "OPT4C-K16", "cuRobo-K1", "cuRobo-K16"]
+    order = ["本文方法-1起点", "本文方法-16起点", "对比方法-1起点", "对比方法-16起点"]
     n1000["label"] = pd.Categorical(n1000["label"], order, ordered=True)
     n1000 = n1000.sort_values("label")
 
     fig, ax = plt.subplots(figsize=(5.4, 3.45), constrained_layout=True)
-    markers = {"OPT4C-K1": "o", "OPT4C-K16": "s", "cuRobo-K1": "^", "cuRobo-K16": "D"}
-    colors = {"OPT4C-K1": "#9ecae1", "OPT4C-K16": "#3182bd", "cuRobo-K1": "#bdbdbd", "cuRobo-K16": "#636363"}
-    offsets = {"OPT4C-K1": (-1.05, 5.2), "OPT4C-K16": (0.12, 2.4), "cuRobo-K1": (-1.35, -4.2), "cuRobo-K16": (0.15, -6.0)}
+    markers = {"本文方法-1起点": "o", "本文方法-16起点": "s", "对比方法-1起点": "^", "对比方法-16起点": "D"}
+    colors = {"本文方法-1起点": "#9ecae1", "本文方法-16起点": "#3182bd", "对比方法-1起点": "#bdbdbd", "对比方法-16起点": "#636363"}
+    offsets = {"本文方法-1起点": (-1.05, 5.2), "本文方法-16起点": (0.12, 2.4), "对比方法-1起点": (-1.35, -4.2), "对比方法-16起点": (0.15, -6.0)}
     for _, row in n1000.iterrows():
         x = row["throughput_targets_per_s_mean"] / 1e4
         y = row["strict_sr"] * 100.0
@@ -267,14 +271,14 @@ def draw_pareto_front() -> None:
             zorder=3,
         )
         dx, dy = offsets[label]
-        ax.text(x + dx, y + dy, f"p95={row['pos_p95_all_mm']:.2f} mm", fontsize=7.2, ha="left", va="center")
+        ax.text(x + dx, y + dy, f"95分位={row['pos_p95_all_mm']:.2f} mm", fontsize=7.2, ha="left", va="center")
     ax.annotate("", xy=(7.1, 55), xytext=(5.7, 55), arrowprops=dict(arrowstyle="->", lw=0.8, color="#9e9e9e"))
-    ax.text(5.7, 56.6, "higher throughput", fontsize=7.0, color="#777777", ha="left")
+    ax.text(5.7, 56.6, "吞吐率增大", fontsize=7.0, color="#777777", ha="left")
     ax.annotate("", xy=(0.95, 96), xytext=(0.95, 82), arrowprops=dict(arrowstyle="->", lw=0.8, color="#9e9e9e"))
-    ax.text(1.05, 91, "higher success", fontsize=7.0, color="#777777", ha="left", rotation=90, va="center")
-    ax.set_xlabel(r"Throughput / $10^4$ targets s$^{-1}$")
-    ax.set_ylabel("Strict SR / %")
-    ax.set_title("Pareto trade-off at N=1000", fontweight="bold")
+    ax.text(1.05, 91, "成功率增大", fontsize=7.0, color="#777777", ha="left", rotation=90, va="center")
+    ax.set_xlabel("吞吐率/(万目标/s)")
+    ax.set_ylabel("严格成功率/%")
+    ax.set_title("目标数为1000时的折中关系", fontweight="bold")
     ax.grid(True)
     ax.set_xlim(0.55, 7.9)
     ax.set_ylim(49.8, 101.2)
@@ -291,6 +295,7 @@ def draw_threshold_scan() -> None:
     df = read_csv(THRESHOLD)
     df = df[df["N"] == 1000].copy()
     order = ["Loose", "Medium", "Strict", "Ultra"]
+    order_cn = ["宽松", "中等", "严格", "超严"]
     df["threshold_level"] = pd.Categorical(df["threshold_level"], order, ordered=True)
     methods = [
         ("OPT4C-K16", 16, "#4e79a7", "o"),
@@ -306,12 +311,12 @@ def draw_threshold_scan() -> None:
             continue
         ax.plot(x, pct(sub["success_rate"]), color=color, marker=marker, lw=1.5, label=method_label(method, None))
     ax.axvspan(1.72, 2.28, color="#f2f2f2", zorder=0)
-    ax.text(2, 102.5, "Strict主阈值", ha="center", va="bottom", fontsize=7.5, color="#555555")
-    ax.set_xticks(x, order)
+    ax.text(2, 102.5, "主阈值", ha="center", va="bottom", fontsize=7.5, color="#555555")
+    ax.set_xticks(x, order_cn)
     ax.set_ylim(0, 106)
-    ax.set_ylabel("成功率 / %")
-    ax.set_xlabel("统一外部FK阈值等级")
-    ax.set_title("N=1000 阈值扫描：逐目标误差重算", fontweight="bold")
+    ax.set_ylabel("成功率/%")
+    ax.set_xlabel("阈值等级/类")
+    ax.set_title("目标数为1000时的阈值扫描", fontweight="bold")
     ax.grid(axis="y")
     ax.legend(frameon=False, loc="lower left", ncol=2)
     save_fig(fig, "fig5_threshold_scan")
@@ -361,13 +366,13 @@ def draw_seed_success_heatmap() -> None:
     cmap = mcolors.ListedColormap(["#efefef", "#efe6aa", "#b9d7ea", "#2f6f9f"])
     norm = mcolors.BoundaryNorm([-0.5, 0.5, 1.5, 2.5, 3.5], cmap.N)
     im = ax.imshow(matrix.to_numpy(), aspect="auto", interpolation="nearest", cmap=cmap, norm=norm)
-    ax.set_title("Target-seed success level", fontweight="bold")
-    ax.set_xlabel("Sobol seed / lane 0-15")
-    ax.set_ylabel("Sampled target rank")
+    ax.set_title("目标与起点的成功等级", fontweight="bold")
+    ax.set_xlabel("起点编号/个")
+    ax.set_ylabel("目标排序/个")
     ax.set_xticks(np.arange(matrix.shape[1]), [str(int(c)) for c in matrix.columns])
     ax.set_yticks(np.arange(0, matrix.shape[0], 20), [str(i) for i in range(0, matrix.shape[0], 20)])
     cbar = fig.colorbar(im, ax=ax, ticks=[0, 1, 2, 3], fraction=0.046, pad=0.035)
-    cbar.ax.set_yticklabels(["Fail", "Loose", "Medium", "Strict"])
+    cbar.ax.set_yticklabels(["失败", "宽松", "中等", "严格"])
     save_fig(fig, "fig5_seed_success_heatmap")
 
 
@@ -434,7 +439,7 @@ def draw_trajectory_deltaq_heatmap() -> None:
     vmax = 4.0
     last_im = None
     cmap = mcolors.LinearSegmentedColormap.from_list("soft_blues", ["#ffffff", "#c6dbef", "#2171b5"])
-    for ax, method, title in zip(axes, methods, ["No rerank", "Smoothness rerank"]):
+    for ax, method, title in zip(axes, methods, ["未重排序", "平滑重排序"]):
         sub = df[df["method"] == method]
         mat = sub.pivot(index="trajectory_id", columns="step", values="delta_q_norm").sort_index()
         last_im = ax.imshow(np.clip(mat.to_numpy(), 0, vmax), aspect="auto", interpolation="nearest", cmap=cmap, vmin=0, vmax=vmax)
@@ -443,7 +448,7 @@ def draw_trajectory_deltaq_heatmap() -> None:
         ax.text(
             0.02,
             0.96,
-            f"p95={p95:.2f} rad\njump ratio={jump_ratio:.1f}%",
+            f"95分位={p95:.2f} rad\n跳变占比={jump_ratio:.1f}%",
             transform=ax.transAxes,
             ha="left",
             va="top",
@@ -451,13 +456,13 @@ def draw_trajectory_deltaq_heatmap() -> None:
             bbox=dict(facecolor="white", edgecolor="#bdbdbd", linewidth=0.4, alpha=0.86),
         )
         ax.set_title(title, fontweight="bold")
-        ax.set_xlabel("Trajectory step")
+        ax.set_xlabel("相邻步序号/步")
         ax.set_xticks([0, 9, 19, 29, 39, 48], ["1", "10", "20", "30", "40", "49"])
         ax.grid(False)
-    axes[0].set_ylabel("Trajectory id")
+    axes[0].set_ylabel("轨迹编号/条")
     axes[0].set_yticks([0, 5, 10, 15, 19], ["0", "5", "10", "15", "19"])
     cbar = fig.colorbar(last_im, ax=axes, pad=0.02, fraction=0.045)
-    cbar.set_label(r"wrapped $\|\Delta q\|_2$ / rad")
+    cbar.set_label("关节环绕差分范数/rad")
     save_fig(fig, "fig7_trajectory_deltaq_heatmap")
 
 
@@ -466,22 +471,22 @@ def draw_robustness_boundary() -> None:
     near_limit = read_csv(NEAR_LIMIT)
     fig, axes = plt.subplots(1, 2, figsize=(6.9, 2.95), constrained_layout=True)
     ax = axes[0]
-    annotate_panel(ax, "a", "Near singular success rate")
+    annotate_panel(ax, "a", "近奇异成功率")
     sub = singular[(singular["N"] == 1000) & (singular["K"].isin([1, 16]))].copy()
     types = ["wrist_singular", "elbow_singular", "shoulder_singular"]
     x = np.arange(len(types))
     width = 0.34
     for offset, k, color in [(-width / 2, 1, "#bdbdbd"), (width / 2, 16, "#4e79a7")]:
         vals = [float(sub[(sub["target_type"] == t) & (sub["K"] == k)]["strict_sr"].iloc[0] * 100.0) for t in types]
-        ax.bar(x + offset, vals, width=width, color=color, edgecolor="white", label=f"K={k}")
-    ax.set_xticks(x, ["wrist", "elbow", "shoulder"])
-    ax.set_ylabel("Strict SR / %")
+        ax.bar(x + offset, vals, width=width, color=color, edgecolor="white", label=f"{k}起点")
+    ax.set_xticks(x, ["腕部", "肘部", "肩部"])
+    ax.set_ylabel("严格成功率/%")
     ax.set_ylim(0, 105)
     ax.grid(axis="y")
     ax.legend(frameon=False, loc="upper left", fontsize=7.0)
 
     ax = axes[1]
-    annotate_panel(ax, "b", "Near-limit ratio")
+    annotate_panel(ax, "b", "近限位比例")
     sub = near_limit[(near_limit["N"] == 1000) & (near_limit["K"] == 16)].copy()
     modes = ["OPT4C-K16-BarrierOFF", "OPT4C-K16-BarrierON"]
     x = np.arange(len(modes))
@@ -489,8 +494,8 @@ def draw_robustness_boundary() -> None:
     ax.bar(x, near, width=0.48, color=["#bdbdbd", "#4e79a7"], edgecolor="white")
     for idx, val in enumerate(near):
         ax.text(idx, val + 0.08, f"{val:.2f}%", ha="center", va="bottom", fontsize=7.4)
-    ax.set_xticks(x, ["OFF", "ON"])
-    ax.set_ylabel("Near-limit ratio / %")
+    ax.set_xticks(x, ["关闭", "开启"])
+    ax.set_ylabel("近限位比例/%")
     ax.set_ylim(0, max(near) * 1.45)
     ax.grid(axis="y")
     save_fig(fig, "fig6_robustness_boundary")
@@ -500,22 +505,22 @@ def draw_iteration_tradeoff() -> None:
     df = read_csv(LM_SCAN).sort_values("max_iter")
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(7.1, 3.05), constrained_layout=True)
     annotate_panel(ax1, "a", "迭代次数与精度")
-    ax1.plot(df["max_iter"], pct(df["strict_sr"]), marker="o", color="#4e79a7", lw=1.5, label="Strict SR")
-    ax1.set_xlabel("max_iter")
-    ax1.set_ylabel("Strict SR / %")
+    ax1.plot(df["max_iter"], pct(df["strict_sr"]), marker="o", color="#4e79a7", lw=1.5, label="严格成功率")
+    ax1.set_xlabel("最大迭代次数/次")
+    ax1.set_ylabel("严格成功率/%")
     ax1.grid(True)
     ax1b = ax1.twinx()
     ax1b.spines["right"].set_visible(True)
-    ax1b.plot(df["max_iter"], df["pos_p95_all_mm"], marker="s", color="#59a14f", lw=1.3, label="p95_all")
-    ax1b.set_ylabel("p95_all / mm")
+    ax1b.plot(df["max_iter"], df["pos_p95_all_mm"], marker="s", color="#59a14f", lw=1.3, label="位置误差95分位")
+    ax1b.set_ylabel("位置误差95分位/mm")
     lines = ax1.get_lines() + ax1b.get_lines()
     ax1.legend(lines, [l.get_label() for l in lines], frameon=False, loc="upper center", ncol=2)
     ax1.axvline(60, color="#333333", lw=0.8, ls="--")
 
     annotate_panel(ax2, "b", "迭代次数与吞吐")
     ax2.plot(df["max_iter"], df["throughput_targets_per_s_mean"] / 1e4, marker="o", color="#e15759", lw=1.5)
-    ax2.set_xlabel("max_iter")
-    ax2.set_ylabel(r"吞吐率 / $10^4$ targets s$^{-1}$")
+    ax2.set_xlabel("最大迭代次数/次")
+    ax2.set_ylabel("吞吐率/(万目标/s)")
     ax2.grid(True)
     ax2.axvline(60, color="#333333", lw=0.8, ls="--")
     save_fig(fig, "fig9_iteration_tradeoff")

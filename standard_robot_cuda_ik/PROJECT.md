@@ -1,6 +1,6 @@
 # Standard Robot CUDA IK — Project Handoff
 
-更新时间：2026-07-05 09:00 CST (Asia/Shanghai)
+更新时间：2026-07-06 22:21 CST (Asia/Shanghai)
 
 本文件是当前项目的唯一权威交接入口。切换到其他窗口或其他 AI 后，先读本文件，再读 `论文/paper.tex` 和 `data/experiments/`。
 
@@ -20,7 +20,9 @@ OPT4C = Analytical Jacobian (via Fused FK)
       + Single-kernel end-to-end fusion
 ```
 
-**论文状态**：终稿，11 页，xelatex 编译，投稿《系统工程与电子技术》。
+**论文状态**：终稿定稿，11 页，xelatex 编译，投稿《系统工程与电子技术》。已按期刊模板规范完成全文重写。
+
+**论文定稿位置**：`../论文定稿/`（含 .tex / .pdf / .docx / .md 四格式 + 全部插图）
 
 ---
 
@@ -40,11 +42,15 @@ standard_robot_cuda_ik/
 │   ├── standard_robot_cuda_v4_runner_r128
 │   ├── standard_robot_cuda_v4_runner_r160
 │   └── standard_robot_cuda_v4_runner_ptxas
-├── 论文/                             # ★ 论文全部源文件
+├── 论文/                             # ★ 论文源文件（工作区）
 │   ├── paper.tex                    # LaTeX 源（11 页，xelatex 编译）
 │   ├── paper.pdf                    # 已编译 PDF
+│   ├── paper.md                     # Markdown 版本（含渲染图片）
+│   ├── paper.docx                   # Word 版本
 │   ├── paper.txt                    # 查重纯文本
 │   ├── .latexmkrc                   # 编译配置
+│   ├── paper_md_figures/            # Markdown 用 PNG 插图
+│   ├── figures/                     # 插图 PDF（fig3-fig7 数据图）
 │   ├── 绘图/                        # 5 张图（PDF+SVG+draw.io，双语标题）
 │   ├── 格式模板/                    # 系统工程与电子技术投稿格式规范
 │   ├── 计划/                        # 审稿意见、语言润色、实验补充意见
@@ -68,7 +74,16 @@ standard_robot_cuda_ik/
 ├── urdf/
 │   ├── ur10_official.urdf           # 官方 UR10 模型
 │   └── ur10_official_source.json    # 来源记录
-└── 论文提交包.tar.gz                 # 发给导师的压缩包（925 KB）
+├── 论文提交包.tar.gz                 # 发给导师的压缩包（925 KB）
+└── 论文定稿 -> ../论文定稿/           # 最终定稿合集
+
+论文定稿/ (位于项目根目录 ../论文定稿/)
+├── paper.tex                        # LaTeX 源码（图片路径已适配）
+├── paper.pdf                        # 编译 PDF（11页）
+├── paper.md                         # Markdown 版（518行）
+├── paper.docx                       # Word 版（11MB）
+├── figures/                         # 全部插图（7 PDF + 4 PNG）
+└── paper_md_figures/                # Markdown 用 PNG（11张）
 ```
 
 ---
@@ -116,6 +131,7 @@ standard_robot_cuda_ik/
 | 主 runner | `build/standard_robot_cuda_v4_runner` |
 | 论文编译 | `xelatex` (CTeX 系) |
 | cuRobo API | 可用（Python） |
+| Zotero MCP | 已配置（zoteus，本地 API + 云 API） |
 
 ---
 
@@ -206,9 +222,13 @@ ncu --set full -o ncu_report --target-processes all \
 cd 论文
 latexmk -xelatex paper.tex    # 或
 xelatex paper.tex && xelatex paper.tex && xdvipdfmx paper.xdv
+
+# 定稿版（独立目录，不受工作区图片路径影响）
+cd ../论文定稿
+latexmk -xelatex paper.tex
 ```
 
-编译产物：`论文/paper.pdf`（11 页）
+编译产物：`论文/paper.pdf` 或 `论文定稿/paper.pdf`（11 页）
 
 ---
 
@@ -220,12 +240,24 @@ xelatex paper.tex && xelatex paper.tex && xdvipdfmx paper.xdv
 | 公平对比（§4.2） | cuRobo K=16 SR 0.988，OPT4C 吞吐 1.75× |
 | K=1 消融（§4.3） | 多起点策略是 SR 的决定性来源 |
 | 混合精度（§4.4） | 仅 +2%，瓶颈在 FP64 高斯消元 |
-| Nsight Compute（§4.4） | Long Scoreboard 83.2%，Issue Slot 2.32% |
-| PTX 分析（§4.4） | 194 寄存器/线程，~44% 占用率，零 Bank 冲突 |
+| Nsight Compute（§4.8） | Long Scoreboard 83.2%，Issue Slot 2.32% |
+| PTX 分析（§4.8） | 194 寄存器/线程，~44% 占用率，零 Bank 冲突 |
 
 ---
 
-## 9. 后续 AI 接手顺序
+## 9. 论文修改记录
+
+| 日期 | 修改内容 |
+|------|---------|
+| 2026-07-06 | 标题改为"面向小矩阵批量逆运动学的 CUDA 单核函数融合求解" |
+| 2026-07-06 | 参考文献替换：删除 8 篇旧文献（1969-2008），新增 6 篇（2024-2025） |
+| 2026-07-06 | 按系统工程与电子技术模板规范重写摘要、正文、章节标题 |
+| 2026-07-06 | 建立 论文定稿/ 目录，含 .tex/.pdf/.docx/.md 四格式 |
+| 2026-07-06 | Zotero MCP 集成（zoteus），可直接读取/写入 Zotero 文献库 |
+
+---
+
+## 10. 后续 AI 接手顺序
 
 1. 读本文件 `PROJECT.md`。
 2. 读 `data/experiments/README.md`（数据-论文对应关系）。
@@ -233,10 +265,11 @@ xelatex paper.tex && xelatex paper.tex && xdvipdfmx paper.xdv
 4. 读 `src/cuda/cuda_v4_runner.cu` 了解求解器实现。
 5. 若要修改论文，编辑 `论文/paper.tex`，运行 `cd 论文 && latexmk -xelatex paper.tex`。
 6. 若要重跑实验，参考 `data/experiments/补充实验/` 下的脚本。
+7. 定稿版本在 `../论文定稿/` 中。
 
 ---
 
-## 10. 注意事项
+## 11. 注意事项
 
 - **论文终稿已定稿**。修改前务必确认是否影响核心论证和已定数据。
 - **所有实验数据在 `data/experiments/` 中**。首轮数据在 `data/results/latest/` 仅作参考，论文表格基于 `experiments/` 数据生成。
