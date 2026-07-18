@@ -66,25 +66,35 @@
     }
   }
 
-  // --- Reveal sections on scroll (Intersection Observer) ---
+  // --- Reveal content elements on scroll (Intersection Observer) ---
   function setupRevealObserver() {
+    var revealTargets = document.querySelectorAll(
+      '.card, figure, .callout, .code-block, .data-table, ' +
+      '.arch-layer, .mem-level, .gpu-box, .step, .stat-item, .formula'
+    );
+
     if (!('IntersectionObserver' in window)) {
-      // Fallback: show all sections immediately
-      allSections.forEach(function(s) { s.classList.add('visible'); });
+      // Fallback: show all elements immediately
+      revealTargets.forEach(function(el) { el.classList.add('visible'); });
       return;
     }
 
-    const observer = new IntersectionObserver(function(entries) {
+    var observer = new IntersectionObserver(function(entries) {
       entries.forEach(function(entry) {
         if (entry.isIntersecting) {
           entry.target.classList.add('visible');
+          observer.unobserve(entry.target);
         }
       });
-    }, { threshold: 0.1, rootMargin: '0px 0px -50px 0px' });
+    }, { threshold: 0.05, rootMargin: '0px 0px -30px 0px' });
 
-    allSections.forEach(function(section) {
-      observer.observe(section);
+    revealTargets.forEach(function(el) {
+      observer.observe(el);
     });
+
+    // Also make hero stat items visible immediately
+    var heroStats = document.querySelectorAll('.hero .stat-item');
+    heroStats.forEach(function(el) { el.classList.add('visible'); });
   }
 
   // --- Counter animation ---
@@ -228,10 +238,6 @@
     } else {
       window.addEventListener('load', renderMath);
     }
-
-    // Show first visible sections immediately (above fold)
-    const hero = document.getElementById('hero');
-    if (hero) hero.classList.add('visible');
   }
 
   if (document.readyState === 'loading') {
