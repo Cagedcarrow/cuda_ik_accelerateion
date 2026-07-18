@@ -1,0 +1,892 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SAKF-IK — 面向小矩阵批量逆运动学的 CUDA 单核函数融合求解</title>
+<meta name="description" content="SAKF-IK: Structure-Aware Kernel Fusion for Inverse Kinematics — 结构感知的 CUDA 单核函数融合批量逆运动学求解方法">
+<link rel="stylesheet" href="assets/base.css">
+<!-- KaTeX for math rendering -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+<!-- Prism for code highlighting -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/themes/prism.min.css">
+<script defer src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/prism.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-c.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-cpp.min.js"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/prismjs@1.29.0/components/prism-bash.min.js"></script>
+</head>
+<body>
+
+<!-- Progress Bar -->
+<div class="progress-bar" id="progress-bar"></div>
+
+<!-- Navigation -->
+<nav class="top-nav" id="top-nav">
+  <span class="nav-brand">SAKF-IK</span>
+  <button class="nav-toggle" id="nav-toggle" aria-label="Menu">
+    <span></span><span></span><span></span>
+  </button>
+  <div class="nav-links" id="nav-links">
+    <a href="#hero" class="active">首页</a>
+    <a href="#comparison">计算方案对比</a>
+    <a href="#cuda-intro">CUDA 架构</a>
+    <a href="#research">研究现状</a>
+    <a href="#curobo">cuRobo 详解</a>
+    <a href="#sakfik">SAKF-IK 方案</a>
+    <a href="#results">实验结果</a>
+    <a href="#summary">总结</a>
+  </div>
+</nav>
+
+<!-- ==================== Block 0: HERO ==================== -->
+<section class="hero" id="hero">
+  <div class="hero-content">
+    <div class="hero-kicker">Research Showcase · SAKF-IK</div>
+    <h1>面向小矩阵批量逆运动学的<br>CUDA 单核函数融合求解</h1>
+    <div class="hero-subtitle">SAKF-IK — Structure-Aware Kernel Fusion for Inverse Kinematics</div>
+    <div class="hero-meta">
+      刘霄鹏 · 武汉科技大学 机械工程学院<br>
+      实验平台：NVIDIA GeForce RTX 4060 Laptop GPU (Ada Lovelace, SM 8.9)
+    </div>
+    <div class="stat-row" style="max-width:640px;margin:0 auto;">
+      <div class="stat-item">
+        <div class="stat-value counter" data-to="18226">0</div>
+        <div class="stat-label">吞吐量 (targets/s)</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-value counter" data-to="0.954" data-decimals="3">0</div>
+        <div class="stat-label">Strict 成功率</div>
+      </div>
+      <div class="stat-item">
+        <div class="stat-value counter" data-to="2700">0</div>
+        <div class="stat-label">vs CPU 加速比</div>
+      </div>
+    </div>
+  </div>
+  <div class="hero-scroll">
+    <span>向下滚动</span>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 13l5 5 5-5M7 6l5 5 5-5"/></svg>
+  </div>
+</section>
+
+<!-- ==================== Block 1: 计算方案对比 ==================== -->
+<div class="section-alt"><div class="section-inner">
+<section class="section" id="comparison">
+  <div class="section-header">
+    <div class="section-number">Section 01</div>
+    <h2>主流计算方案对比</h2>
+    <p>Python · C++ · CUDA — 三种计算范式在批量逆运动学场景下的性能差异</p>
+  </div>
+
+  <div class="cards-grid cards-3">
+    <div class="card compare-card">
+      <div style="font-size:2.5rem;margin-bottom:12px;">🐍</div>
+      <h3>Python / NumPy</h3>
+      <div class="metric">~6.7</div>
+      <div class="metric-label">targets/s (K=16)</div>
+      <p style="margin-top:8px;">单进程 CPU 执行，NumPy 矩阵运算基于 BLAS 后端。每目标约 150ms，受限于 Python 解释器开销和标量循环。</p>
+      <div class="speed-badge" style="background:#94a3b8;">Baseline</div>
+    </div>
+    <div class="card compare-card">
+      <div style="font-size:2.5rem;margin-bottom:12px;">⚡</div>
+      <h3>C++ / Eigen</h3>
+      <div class="metric">~100–500</div>
+      <div class="metric-label">targets/s (估计)</div>
+      <p style="margin-top:8px;">多线程 CPU 执行，Eigen/Armadillo 使用 SIMD 向量化。编译优化消除解释器开销，但受限于 CPU 核心数。</p>
+      <div class="speed-badge" style="background:#d97706;">~15–75× Python</div>
+    </div>
+    <div class="card compare-card featured">
+      <div style="font-size:2.5rem;margin-bottom:12px;">🚀</div>
+      <h3>CUDA (SAKF-IK)</h3>
+      <div class="metric">~18,226</div>
+      <div class="metric-label">targets/s (K=16)</div>
+      <p style="margin-top:8px;">GPU 大规模并行，单核函数融合消除调度开销。N=1000 时 Strict 成功率 0.954，GPU 流时间严格线性。</p>
+      <div class="speed-badge">~2,700× Python</div>
+    </div>
+  </div>
+
+  <h4 style="margin-top:32px;text-align:center;">CPU 基线对照（Python/NumPy, K=16）</h4>
+  <div style="overflow-x:auto;">
+  <table class="data-table">
+    <tr><th>方法</th><th>N</th><th>Strict SR</th><th>吞吐 (t/s)</th><th>p95 (mm)</th></tr>
+    <tr><td>CPU-K16</td><td>100</td><td>0.960</td><td>6.33</td><td>4.38</td></tr>
+    <tr><td>CPU-K16</td><td>500</td><td>0.954</td><td>6.66</td><td>4.34</td></tr>
+    <tr><td>CPU-K16</td><td>1,000</td><td>0.954</td><td>6.74</td><td>4.56</td></tr>
+    <tr class="highlight-row"><td><strong>GPU-K16 (SAKF-IK)</strong></td><td><strong>1,000</strong></td><td><strong>0.954</strong></td><td><strong>18,226</strong></td><td><strong>4.56</strong></td></tr>
+  </table>
+  </div>
+
+  <div class="callout callout-info mt-24">
+    <strong>关键洞察：</strong>GPU 加速比为 <strong>&gt;2,700×</strong>，但成功率和精度完全相同（同为 0.954 SR, 4.56mm p95）。这说明 GPU 并行化在保持数值精度不变的前提下，仅通过 target-block 并行结构摊薄了固定调度和迭代开销。
+  </div>
+</section>
+</div></div>
+
+<!-- ==================== Block 2: CUDA 架构介绍 ==================== -->
+<section class="section" id="cuda-intro">
+  <div class="section-header">
+    <div class="section-number">Section 02</div>
+    <h2>CUDA 硬件架构基础</h2>
+    <p>理解 GPU 并行计算的关键概念：线程层次、内存层次与执行模型</p>
+  </div>
+
+  <!-- GPU vs CPU -->
+  <div class="cards-grid cards-2 mb-24">
+    <div class="card">
+      <h3>🖥️ CPU 架构</h3>
+      <p>少量强大核心（4–32 核），每核心有独立的大容量缓存和复杂的分支预测器。优化目标：<strong>降低单线程延迟</strong>。适合复杂控制流和串行任务。</p>
+      <ul style="margin:12px 0 0 20px;font-size:.88rem;color:var(--text-2);">
+        <li>核心数：4–32</li>
+        <li>线程切换开销大（操作系统级）</li>
+        <li>SIMD 向量宽度：256–512 bit</li>
+        <li>内存带宽：50–100 GB/s</li>
+      </ul>
+    </div>
+    <div class="card card-accent">
+      <h3>🎮 GPU 架构</h3>
+      <p>数千个简单核心，按组调度执行相同指令。优化目标：<strong>最大化吞吐量</strong>。适合数据并行、批量计算任务。</p>
+      <ul style="margin:12px 0 0 20px;font-size:.88rem;color:var(--text-2);">
+        <li>核心数：数千（RTX 4060: 3072 CUDA Cores）</li>
+        <li>线程切换零开销（硬件 warp scheduler）</li>
+        <li>SIMT 宽度：32 线程/warp</li>
+        <li>内存带宽：272 GB/s (GDDR6)</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Thread hierarchy -->
+  <h3 style="text-align:center;margin:32px 0 16px;">线程层次结构</h3>
+  <div class="gpu-diagram">
+    <div class="gpu-row">
+      <div class="gpu-box"><div class="gpu-box-label">Thread</div><div class="gpu-box-desc">单线程<br>执行基本单元</div></div>
+      <div style="display:flex;align-items:center;color:var(--accent);font-size:1.5rem;">→ 32个组成 →</div>
+      <div class="gpu-box highlight"><div class="gpu-box-label">Warp</div><div class="gpu-box-desc">32 线程<br>SIMT 调度单元</div></div>
+      <div style="display:flex;align-items:center;color:var(--accent);font-size:1.5rem;">→ 多 warp 组成 →</div>
+      <div class="gpu-box"><div class="gpu-box-label">Block</div><div class="gpu-box-desc">≤1024 线程<br>共享内存 + 同步</div></div>
+    </div>
+    <div class="gpu-row">
+      <div style="display:flex;align-items:center;color:var(--accent);font-size:1.5rem;">→ 多 Block 组成 →</div>
+      <div class="gpu-box"><div class="gpu-box-label">Grid</div><div class="gpu-box-desc">全部线程块<br>一次 Kernel 启动</div></div>
+      <div style="display:flex;align-items:center;color:var(--accent);font-size:1.5rem;">→ 调度到 →</div>
+      <div class="gpu-box highlight"><div class="gpu-box-label">SM</div><div class="gpu-box-desc">Streaming Multiprocessor<br>RTX 4060: 24 SMs</div></div>
+    </div>
+  </div>
+
+  <!-- Memory hierarchy -->
+  <h3 style="text-align:center;margin:32px 0 16px;">内存层次结构（访问延迟对比）</h3>
+  <div class="mem-hierarchy">
+    <div class="mem-level">
+      <div class="mem-level-icon" style="background:#059669;">Reg</div>
+      <div class="mem-level-info"><div class="mem-level-name">寄存器 Register</div><div class="mem-level-speed">~1 cycle · 每线程最多 255 个</div></div>
+      <div class="mem-level-size">最快</div>
+    </div>
+    <div class="mem-level">
+      <div class="mem-level-icon" style="background:#2563eb;">SMEM</div>
+      <div class="mem-level-info"><div class="mem-level-name">共享内存 Shared Memory</div><div class="mem-level-speed">~20–30 cycles · Block 内共享 · 可编程 SRAM</div></div>
+      <div class="mem-level-size">~100 KB/SM</div>
+    </div>
+    <div class="mem-level">
+      <div class="mem-level-icon" style="background:#7c3aed;">CMEM</div>
+      <div class="mem-level-info"><div class="mem-level-name">常量内存 Constant Memory</div><div class="mem-level-speed">~1 cycle（广播） · 只读 · 所有 Block 共享</div></div>
+      <div class="mem-level-size">64 KB + 10 KB/SM Cache</div>
+    </div>
+    <div class="mem-level">
+      <div class="mem-level-icon" style="background:#dc2626;">GMEM</div>
+      <div class="mem-level-info"><div class="mem-level-name">全局内存 Global Memory (DRAM)</div><div class="mem-level-speed">~200–800 cycles · 所有线程可读写</div></div>
+      <div class="mem-level-size">8 GB (RTX 4060)</div>
+    </div>
+  </div>
+
+  <div class="callout callout-info mt-24">
+    <strong>关键架构洞察：</strong>SAKF-IK 的核心设计将数据流限制在 GPU 片上存储层次——运动学结构参数常驻常量内存（~1 cycle 广播），候选解暂存共享内存（~20 cycles），迭代计算全部在寄存器中（~1 cycle）。仅初始输入和最终输出经过全局内存。这使得调度开销压缩至 GPU 流时间的 0.3% 以下。
+  </div>
+</section>
+
+<!-- ==================== Block 3: 研究现状 ==================== -->
+<div class="section-alt"><div class="section-inner">
+<section class="section" id="research">
+  <div class="section-header">
+    <div class="section-number">Section 03</div>
+    <h2>机械臂 GPU 加速研究现状</h2>
+    <p>2023–2025 年主要 GPU 加速逆运动学与运动规划相关工作</p>
+  </div>
+
+  <div class="cards-grid cards-2">
+    <div class="card">
+      <div class="flex-between"><h3>cuRobo</h3><span class="tag">NVIDIA/Stanford · 2023</span></div>
+      <p>CUDA 并行化机器人运动生成框架。IK 求解采用 CUDA Graph 多阶段流水线：粒子群初始化 → 并行 L-BFGS 优化 → 碰撞检测。底层依赖 cuBLAS/cuSOLVER。吞吐 37,000+ queries/s（碰撞关闭），30–60× CPU 加速。</p>
+      <p style="font-size:.8rem;color:var(--text-3);margin-top:8px;">Sundaralingam et al., arXiv:2310.17274</p>
+    </div>
+    <div class="card">
+      <div class="flex-between"><h3>HJCD-IK</h3><span class="tag">A²R Lab · 2025</span></div>
+      <p>GPU 批量混合雅可比坐标下降 IK。两阶段：方向感知贪心 CCD 初始化 → 并行 Jacobian 精修。利用 Block/Warp/Thread 三级并行，在 Franka Panda (7-DOF) 上验证。</p>
+      <p style="font-size:.8rem;color:var(--text-3);margin-top:8px;">Yasutake, Kingston & Plancher, arXiv:2510.07514</p>
+    </div>
+    <div class="card">
+      <div class="flex-between"><h3>mjinx</h3><span class="tag">Based Robotics · 2025</span></div>
+      <p>基于 JAX + MuJoCo MJX 的可微分 GPU IK。利用 JAX jit 编译、vmap 自动向量化、自动微分。支持碰撞避免约束。无需手写 CUDA kernel。</p>
+      <p style="font-size:.8rem;color:var(--text-3);margin-top:8px;">Domrachev & Nedelchev, github.com/based-robotics/mjinx</p>
+    </div>
+    <div class="card">
+      <div class="flex-between"><h3>GATO</h3><span class="tag">2025</span></div>
+      <p>GPU 加速批量轨迹优化，用于边缘 MPC。利用 CUDA 批量并行实现 18–21× CPU 加速。pRRTC 进一步在 7–14 DOF 机械臂上实现 GPU 实时运动规划。</p>
+      <p style="font-size:.8rem;color:var(--text-3);margin-top:8px;">Du et al., arXiv:2510.07625</p>
+    </div>
+  </div>
+
+  <div class="callout callout-info mt-24">
+    <strong>趋势总结：</strong>2024–2025 年 GPU IK 研究呈现两条主线：① 手写 CUDA kernel（cuRobo, HJCD-IK, SAKF-IK）追求极致性能；② JAX + GPU 可微分框架（mjinx, JAX-IK）追求灵活性和可组合性。SAKF-IK 的独特定位是 <strong>针对 N≤1000 中小批量场景的硬件-算法协同设计</strong>，通过单核函数融合从根本上消除调度开销。
+  </div>
+</section>
+</div></div>
+
+<!-- ==================== Block 4: cuRobo 详解 ==================== -->
+<section class="section" id="curobo">
+  <div class="section-header">
+    <div class="section-number">Section 04</div>
+    <h2>cuRobo 与 CUDA 线性代数库详解</h2>
+    <p>深入分析 cuRobo 架构设计与通用 GPU 线性代数库在小矩阵场景下的结构性缺陷</p>
+  </div>
+
+  <h3>cuRobo 三层架构</h3>
+  <div class="gpu-diagram">
+    <div class="gpu-row">
+      <div class="gpu-box highlight"><div class="gpu-box-label">① 并行采样</div><div class="gpu-box-desc">数千粒子群种子<br>并行生成候选配置</div></div>
+      <div style="display:flex;align-items:center;color:var(--accent);">→</div>
+      <div class="gpu-box highlight"><div class="gpu-box-label">② 并行评估</div><div class="gpu-box-desc">FK + 碰撞检测<br>球近似 + SDF</div></div>
+      <div style="display:flex;align-items:center;color:var(--accent);">→</div>
+      <div class="gpu-box highlight"><div class="gpu-box-label">③ 并行优化</div><div class="gpu-box-desc">批量 L-BFGS<br>噪线搜索</div></div>
+    </div>
+  </div>
+
+  <div class="cards-grid cards-2 mt-24">
+    <div class="card">
+      <h3>cuRobo 技术栈</h3>
+      <table class="data-table" style="font-size:.78rem;">
+        <tr><th>组件</th><th>技术</th></tr>
+        <tr><td>前端</td><td>PyTorch</td></tr>
+        <tr><td>运动学 Kernel</td><td>自定义 CUDA</td></tr>
+        <tr><td>线性代数</td><td>cuBLAS + cuSOLVER</td></tr>
+        <tr><td>碰撞检测</td><td>NVIDIA Warp (BVH)</td></tr>
+        <tr><td>SDF</td><td>nvblox</td></tr>
+        <tr><td>Kernel 调度</td><td>CUDA Graphs</td></tr>
+      </table>
+    </div>
+    <div class="card">
+      <h3>性能数据 (RTX 4090)</h3>
+      <table class="data-table" style="font-size:.78rem;">
+        <tr><th>场景</th><th>CPU</th><th>cuRobo</th></tr>
+        <tr><td>6-DOF IK</td><td>8 ms</td><td><strong>0.3 ms</strong></td></tr>
+        <tr><td>7-DOF IK</td><td>15 ms</td><td><strong>0.5 ms</strong></td></tr>
+        <tr><td>IK 吞吐 (无碰撞)</td><td>—</td><td><strong>37,000+/s</strong></td></tr>
+        <tr><td>端到端规划</td><td>1200 ms</td><td><strong>30–45 ms</strong></td></tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- cuBLAS/cuSOLVER deep dive -->
+  <h3 style="margin-top:40px;">🔴 核心问题：通用大矩阵库在小矩阵场景下的范式级错配</h3>
+
+  <div class="cards-grid cards-2 mt-16">
+    <div class="card card-accent">
+      <h4>cuBLAS/cuSOLVER 的设计目标</h4>
+      <ul style="font-size:.85rem;color:var(--text-2);margin-top:8px;padding-left:20px;">
+        <li>分块策略 (tiling) 以 <strong>M, N, K ≥ 32</strong> 为优化目标</li>
+        <li>线程映射和流水线调度针对<strong>大规模矩阵乘法</strong></li>
+        <li><code>cublasGemmBatchedEx</code> 对小矩阵存在 <strong>&gt;10 μs/次</strong> 固定调用开销</li>
+        <li>批量接口虽可打包多个小矩阵，但内部<strong>逐子问题独立处理</strong></li>
+      </ul>
+    </div>
+    <div class="card card-accent">
+      <h4>6×6 矩阵的实际计算量</h4>
+      <ul style="font-size:.85rem;color:var(--text-2);margin-top:8px;padding-left:20px;">
+        <li>高斯消元：~216 次双精度标量运算</li>
+        <li>纯计算时间：<strong>≈ 0.05 μs</strong></li>
+        <li>cuBLAS 接口开销：<strong>≈ 2–10 μs</strong></li>
+        <li style="color:var(--bad);font-weight:600;">调度开销是计算量的 <strong>40–200 倍！</strong></li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="callout callout-danger mt-16">
+    <strong>范式级错配的本质：</strong>这不是 cuBLAS/cuSOLVER 的实现质量问题，而是 <strong>"通用大矩阵库"设计范式与"固定小矩阵批量计算"应用需求之间的根本性矛盾</strong>。cuRobo、HJCD-IK 等现有方案均直接或间接依赖此类通用库，因此无一例外地受困于这一结构性开销。SAKF-IK 通过寄存器级专有求解器（~0.05 μs）替代通用库接口（~2–10 μs），从<strong>范式层面</strong>消除了这一错配。
+  </div>
+
+  <h4 style="margin-top:24px;">速度差异根源：多内核函数流水线 vs 单核函数融合</h4>
+  <div style="overflow-x:auto;">
+  <table class="data-table">
+    <tr><th>对比维度</th><th>cuRobo（多内核 + 通用库）</th><th>SAKF-IK（单核融合 + 专有求解器）</th></tr>
+    <tr><td>内核函数阶段数</td><td>多个（FK → Jacobian → GEMM → Solver → Selection）</td><td><strong>1 个</strong>（四层融合）</td></tr>
+    <tr><td>6×6 线性系统求解</td><td>cuBLAS/cuSOLVER 接口（~2–10 μs）</td><td><strong>寄存器级高斯消元（~0.05 μs）</strong></td></tr>
+    <tr><td>阶段间数据中转</td><td>全局内存（片外 DRAM）</td><td><strong>片上存储（寄存器/共享内存/常量缓存）</strong></td></tr>
+    <tr><td>结构参数存储</td><td>全局内存（~200–800 cycles）</td><td><strong>常量内存（~1 cycle 广播）</strong></td></tr>
+    <tr><td>全局内存写入量</td><td>N×K×16（全部候选）+ 选择结果</td><td><strong>N×18（仅最优解），~14× 减少</strong></td></tr>
+    <tr><td>调度开销占比</td><td>显著（多次 kernel launch 累加）</td><td><strong>&lt; 0.3%</strong>（启动次数恒为 1）</td></tr>
+  </table>
+  </div>
+</section>
+
+<!-- ==================== Block 5: SAKF-IK 核心方案 ==================== -->
+<div class="section-alt"><div class="section-inner">
+<section class="section" id="sakfik">
+  <div class="section-header">
+    <div class="section-number">Section 05 — 核心</div>
+    <h2>SAKF-IK：四层单核函数融合系统架构</h2>
+    <p>Structure-Aware Kernel Fusion for Inverse Kinematics — 硬件-算法协同设计的方法论实践</p>
+  </div>
+
+  <!-- Architecture overview -->
+  <h3>5.0 架构总览</h3>
+  <figure>
+    <img src="assets/figures/内核融合示意图.png" alt="核函数融合流程示意" loading="lazy">
+    <figcaption>图 1：SAKF-IK 四层单核函数融合架构总览 — 常量内存基础设施层 → 融合FK-雅可比计算层 → LM迭代与寄存器级求解层 → 共享内存候选选择层</figcaption>
+  </figure>
+
+  <p>SAKF-IK 的核心设计思想是 <strong>硬件-算法协同设计</strong>（hardware-algorithm co-design）：不是将已有 CPU 算法移植至 GPU，也不是在 cuBLAS/cuSOLVER 之上封装调用，而是将 CUDA 编程模型的内存层次和线程层次作为<strong>第一等设计要素</strong>，构建一个四层全部驻留于<strong>单个 GPU 内核函数</strong>内的系统架构。</p>
+
+  <div class="gpu-diagram mt-24">
+    <div class="arch-layer" style="border-left:4px solid #059669;">
+      <div class="arch-layer-header">
+        <div class="arch-layer-num" style="background:#059669;">0</div>
+        <h3>常量内存基础设施层 — Constant Memory Infrastructure</h3>
+      </div>
+      <p style="font-size:.85rem;color:var(--text-2);">UR10 结构参数（~1.4 KB）预编译为 C++ 头文件 → 启动时一次性上传至 <code>__constant__</code> 内存 → 所有 Block 以 ~1 cycle 广播访问</p>
+    </div>
+    <div class="arch-arrow">↓ 广播读取结构参数 ↓</div>
+    <div class="arch-layer" style="border-left:4px solid #2563eb;">
+      <div class="arch-layer-header">
+        <div class="arch-layer-num">1</div>
+        <h3>融合 FK-雅可比计算层 — Fused FK-Jacobian Layer</h3>
+      </div>
+      <p style="font-size:.85rem;color:var(--text-2);">单次 6 段遍历同步输出末端位姿 + 关节世界位置 + 关节世界转轴 → 6 次叉积组装 6×6 解析雅可比</p>
+    </div>
+    <div class="arch-arrow">↓ J, e 数据流（寄存器内）↓</div>
+    <div class="arch-layer" style="border-left:4px solid #7c3aed;">
+      <div class="arch-layer-header">
+        <div class="arch-layer-num" style="background:#7c3aed;">2</div>
+        <h3>LM 迭代与寄存器级求解层 — Register-Level Solver Layer</h3>
+      </div>
+      <p style="font-size:.85rem;color:var(--text-2);">正规方程 HΔq = -g 的 6×6 求解全部在寄存器中完成（~216 标量运算，~0.05 μs）— 替代 cuBLAS/cuSOLVER 的 ~2–10 μs 接口调用</p>
+    </div>
+    <div class="arch-arrow">↓ 候选解 → 共享内存 ↓</div>
+    <div class="arch-layer" style="border-left:4px solid #d97706;">
+      <div class="arch-layer-header">
+        <div class="arch-layer-num" style="background:#d97706;">3</div>
+        <h3>共享内存候选选择层 — Shared Memory Selection Layer</h3>
+      </div>
+      <p style="font-size:.85rem;color:var(--text-2);">16 候选解暂存共享内存 → __syncthreads() 同步 → Lane 0 三级层次化选择 → 最优解写回全局内存</p>
+    </div>
+  </div>
+
+  <!-- 5.1 Layer 0: Constant Memory -->
+  <h3 style="margin-top:48px;">5.1 第一层：常量内存基础设施</h3>
+  <p>将 UR10 机械臂的运动学结构参数从 URDF 模型预编译为 C++ 头文件常量，在程序启动时一次性上传至 GPU <code>__constant__</code> 内存空间。</p>
+
+  <h4>上传的常量清单</h4>
+  <div style="overflow-x:auto;">
+  <table class="data-table">
+    <tr><th>常量符号</th><th>内容</th><th>数据量</th></tr>
+    <tr><td><code>c_segment_origins[96]</code></td><td>6 个关节段固定 origin 变换矩阵（4×4 齐次矩阵/段）</td><td>96 doubles</td></tr>
+    <tr><td><code>c_segment_axes[18]</code></td><td>6 个关节旋转轴单位向量（UR10 全部为 Z 轴）</td><td>18 doubles</td></tr>
+    <tr><td><code>c_T_wrist3_to_tcp[16]</code></td><td>腕部第 3 关节至 tool0 固定变换</td><td>16 doubles</td></tr>
+    <tr><td><code>c_joint_limits[12]</code></td><td>6 个关节的限位角度 [min, max]</td><td>12 doubles</td></tr>
+    <tr><td><code>c_weight_schedule[24]</code></td><td>位置/旋转误差权重</td><td>24 doubles</td></tr>
+    <tr><td><code>c_lambda_params[4]</code></td><td>LM 阻尼参数</td><td>4 doubles</td></tr>
+  </table>
+  </div>
+
+  <div class="callout callout-info mt-16">
+    <strong>设计要点：</strong>总计约 1.4 KB，不足常量内存总容量（64 KB）的 3%。每个 SM 的常量缓存（~10 KB）可完全容纳，避免缓存逐出。同一 warp 内所有线程读取相同常量地址时，仅需 1 个时钟周期的广播延迟，对比全局内存访问的 ~200–800 周期——<strong>访问延迟降低约两个数量级</strong>。
+  </div>
+
+  <div class="code-block mt-16">
+    <div class="code-header"><span class="code-lang">CUDA C++</span><span class="code-filename">cuda_v4_runner.cu — upload_constants()</span></div>
+    <pre><code class="language-cpp">// 结构参数上传（程序启动时仅执行一次）
+cudaError_t upload_constants() {
+  cudaMemcpyToSymbol(c_segment_origins, k_origins, sizeof(k_origins));
+  cudaMemcpyToSymbol(c_segment_axes,    k_axes,    sizeof(k_axes));
+  cudaMemcpyToSymbol(c_T_wrist3_to_tcp, k_T_wrist3_to_tcp, sizeof(k_T_wrist3_to_tcp));
+  cudaMemcpyToSymbol(c_joint_limits,    k_joint_limits, sizeof(k_joint_limits));
+  cudaMemcpyToSymbol(c_weight_schedule, k_weights, sizeof(k_weights));
+  cudaMemcpyToSymbol(c_lambda_params,   k_lambda_params, sizeof(k_lambda_params));
+  return cudaSuccess;
+}</code></pre>
+  </div>
+
+  <!-- 5.2 Layer 1: Fused FK-Jacobian -->
+  <h3 style="margin-top:48px;">5.2 第二层：融合 FK-雅可比计算</h3>
+  <p>这是 SAKF-IK 最核心的结构创新之一。传统方法中，正运动学仅输出末端位姿，雅可比矩阵需通过有限差分（6 关节 × 2 次扰动 = 12 次额外 FK）或自动微分独立计算。SAKF-IK 设计了融合 FK 函数 <code>fk_with_frames_v4()</code>，在<strong>单次 6 段遍历</strong>中同步输出三个层次的几何信息，使雅可比组装降格为"正运动学后处理"——仅需 <strong>6 次叉积运算</strong>。</p>
+
+  <h4>融合 FK 核心代码（逐行解析）</h4>
+  <div class="code-block">
+    <div class="code-header"><span class="code-lang">CUDA C++</span><span class="code-filename">cuda_v4_runner.cu:222–247 — fk_with_frames_v4()</span></div>
+    <pre><code class="language-cpp">__device__ __forceinline__ void fk_with_frames_v4(
+    const double* q,      // 输入：6 维关节角
+    double* T_tip,        // 输出：末端 tool0 位姿 (4×4)
+    double* p_joint,      // 输出：6 个关节世界位置 (6×3)
+    double* z_joint) {    // 输出：6 个关节世界转轴方向 (6×3)
+
+  // 初始化为单位矩阵
+  for (int i = 0; i < 16; ++i) T_tip[i] = (i % 5 == 0) ? 1.0 : 0.0;
+
+  for (int seg = 0; seg < 6; ++seg) {
+    // 步骤 1：施加连杆偏移矩阵（从常量内存读取）
+    mat44_mul(T_tip, &c_segment_origins[seg * 16], T_tmp);
+    for (int i = 0; i < 16; ++i) T_tip[i] = T_tmp[i];
+
+    // 步骤 2：记录关节世界位置（累积变换的平移分量）
+    p_joint[seg*3+0] = T_tip[3];   // X
+    p_joint[seg*3+1] = T_tip[7];   // Y
+    p_joint[seg*3+2] = T_tip[11];  // Z
+
+    // 步骤 3：计算关节世界转轴方向
+    // z_i = R_accumulated(3x3) · a_i(local)
+    // 局部转轴经累积旋转矩阵变换至世界坐标系
+    z_joint[seg*3+0] = T_tip[0]*c_segment_axes[seg*3+0]
+                     + T_tip[1]*c_segment_axes[seg*3+1]
+                     + T_tip[2]*c_segment_axes[seg*3+2];
+    // ... (Y, Z 分量同理)
+
+    // 步骤 4：施加绕关节轴旋转（Rodrigues 公式）
+    build_rotation_matrix_v4(
+        c_segment_axes[seg*3+0],   // ax (UR10: 全 Z 轴)
+        c_segment_axes[seg*3+1],   // ay
+        c_segment_axes[seg*3+2],   // az
+        q[c_q_index[seg]],         // 关节角
+        R);
+    mat44_mul(T_tip, R, T_tmp);
+    for (int i = 0; i < 16; ++i) T_tip[i] = T_tmp[i];
+  }
+  // 步骤 5：末端施加 wrist3 → tool0 固定变换
+  mat44_mul(T_tip, c_T_wrist3_to_tcp, T_tmp);
+  for (int i = 0; i < 16; ++i) T_tip[i] = T_tmp[i];
+}</code></pre>
+  </div>
+
+  <h4>解析雅可比组装核心代码</h4>
+  <div class="code-block">
+    <div class="code-header"><span class="code-lang">CUDA C++</span><span class="code-filename">cuda_v4_runner.cu:272–291 — analytical_jacobian_v4()</span></div>
+    <pre><code class="language-cpp">__device__ __forceinline__ void analytical_jacobian_v4(
+    const double* T_ee,       // 末端位姿
+    const double* p_joint,    // 6 关节世界位置
+    const double* z_joint,    // 6 关节世界转轴
+    double* J) {              // 输出：6×6 雅可比矩阵
+
+  const double pe[3] = {T_ee[3], T_ee[7], T_ee[11]};  // 末端 TCP 位置
+  for (int j = 0; j < 6; ++j) {
+    double zx = z_joint[j*3+0], zy = z_joint[j*3+1], zz = z_joint[j*3+2];
+    double rx = pe[0] - p_joint[j*3+0];  // 末端到关节 j 的向量
+    double ry = pe[1] - p_joint[j*3+1];
+    double rz = pe[2] - p_joint[j*3+2];
+
+    // 上三行：旋转分量 = z_j × (p_ee - p_j)  ← 叉积
+    J[0*6+j] = zy * rz - zz * ry;
+    J[1*6+j] = zz * rx - zx * rz;
+    J[2*6+j] = zx * ry - zy * rx;
+    // 下三行：平移分量 = z_j（转轴方向）
+    J[3*6+j] = zx;
+    J[4*6+j] = zy;
+    J[5*6+j] = zz;
+  }
+}</code></pre>
+  </div>
+
+  <div class="formula">
+    <strong>解析雅可比公式：</strong>
+    $$\mathbf{J}[:,j] = \begin{bmatrix} \mathbf{z}_j \times (\mathbf{p}_{\text{ee}} - \mathbf{p}_j) \\ \mathbf{z}_j \end{bmatrix} \in \mathbb{R}^6, \quad j = 0,\dots,5$$
+  </div>
+
+  <div class="callout callout-success mt-16">
+    <strong>计算量对比：</strong>平均 20 次迭代下，解析方案每候选 20 次 FK 调用，有限差分为 260 次 FK 调用（1 基准 + 12 扰动 × 20 迭代，含评估调用）。<strong>FK 调用减少约 13×</strong>。
+  </div>
+
+  <!-- 5.3 Layer 2: LM Iteration + Register-Level Solver -->
+  <h3 style="margin-top:48px;">5.3 第三层：LM 迭代与寄存器级求解</h3>
+  <p>这是 SAKF-IK <strong>克服"通用大矩阵库在小矩阵场景下范式级错配"的核心技术手段</strong>。LM 迭代每步需解的正规方程 6×6 线性系统，全部在 GPU 寄存器/局部数组中通过手写高斯消元直接求解——<strong>以"专器专用"替代通用大矩阵库的"大矩阵接口"</strong>。</p>
+
+  <h4>Levenberg-Marquardt 正规方程</h4>
+  <div class="formula">
+    $$(\mathbf{J}^\top\mathbf{J} + \lambda\mathbf{I}_6) \cdot \Delta\mathbf{q} = -\mathbf{J}^\top\mathbf{e} - w_{\text{limit}}\nabla\Phi_{\text{limit}}(\mathbf{q})$$
+    其中：$\mathbf{H} = \mathbf{J}^\top\mathbf{J} + \lambda\mathbf{I}_6$（6×6 Hessian 近似），$\mathbf{g} = \mathbf{J}^\top\mathbf{e}$（梯度），$\Phi_{\text{limit}}$ 为关节限位二次障碍函数。
+  </div>
+
+  <h4>🔑 核心创新：寄存器级 6×6 高斯消元</h4>
+  <div class="code-block">
+    <div class="code-header"><span class="code-lang">CUDA C++</span><span class="code-filename">cuda_v4_runner.cu:350–387 — solve_6x6_gauss_v4()</span></div>
+    <pre><code class="language-cpp">// 全部 42 个 double 中间变量保持在 GPU 寄存器中
+// 不调用 cuBLAS、cuSOLVER 或任何外部库！
+__device__ __forceinline__ void solve_6x6_gauss_v4(
+    double* A, double* b, double* x) {
+
+  double M[6][7];  // 增广矩阵 [H | rhs]，全部在寄存器中！
+  for (int r = 0; r < 6; ++r) {
+    for (int c = 0; c < 6; ++c) M[r][c] = A[r * 6 + c];
+    M[r][6] = b[r];
+  }
+
+  // === 前向消元（含部分选主元） ===
+  for (int k = 0; k < 6; ++k) {
+    // 部分选主元：在当前列 k 行范围内找绝对值最大的行
+    int piv = k;
+    double best = fabs(M[k][k]);
+    for (int r = k + 1; r < 6; ++r) {
+      double v = fabs(M[r][k]);
+      if (v > best) { best = v; piv = r; }
+    }
+    // 行交换
+    if (piv != k) {
+      for (int c = k; c < 7; ++c) {
+        double tmp = M[k][c]; M[k][c] = M[piv][c]; M[piv][c] = tmp;
+      }
+    }
+    // 防零保护：对角元过小则以 ±1e-14 替代
+    double diag = M[k][k];
+    if (fabs(diag) < 1e-14) diag = (diag < 0.0 ? -1e-14 : 1e-14);
+    // 消去下三角
+    for (int r = k + 1; r < 6; ++r) {
+      double f = M[r][k] / diag;
+      for (int c = k; c < 7; ++c) M[r][c] -= f * M[k][c];
+    }
+  }
+
+  // === 回代 ===
+  for (int r = 5; r >= 0; --r) {
+    double sum = M[r][6];
+    for (int c = r + 1; c < 6; ++c) sum -= M[r][c] * x[c];
+    double diag = M[r][r];
+    if (fabs(diag) < 1e-14) diag = (diag < 0.0 ? -1e-14 : 1e-14);
+    x[r] = sum / diag;  // Δq_r 求解完成
+  }
+}</code></pre>
+  </div>
+
+  <div class="cards-grid cards-2 mt-16">
+    <div class="card card-accent">
+      <h4>寄存器级求解器特性</h4>
+      <ul style="font-size:.85rem;margin-top:8px;padding-left:20px;">
+        <li>增广矩阵 <strong>M[6][7]</strong>：42 个 double 全在寄存器</li>
+        <li>部分选主元保证数值稳定性</li>
+        <li>防零保护阈值：<strong>|diag| &lt; 10⁻¹⁴</strong></li>
+        <li>标量运算量：<strong>~216 次</strong></li>
+        <li>耗时：<strong>≈ 0.05 μs</strong></li>
+      </ul>
+    </div>
+    <div class="card">
+      <h4>vs cuBLAS/cuSOLVER</h4>
+      <ul style="font-size:.85rem;margin-top:8px;padding-left:20px;">
+        <li>cuBLAS GEMM 接口：参数校验 + 内存分配 + kernel launch</li>
+        <li>每次调用：<strong>≈ 2–10 μs</strong></li>
+        <li>6×6 矩阵实际计算：<strong>≈ 0.05 μs</strong></li>
+        <li style="color:var(--bad);font-weight:600;">接口开销是计算量的 40–200 倍</li>
+        <li>SAKF-IK 方案：<strong>零库依赖，寄存器级直解</strong></li>
+      </ul>
+    </div>
+  </div>
+
+  <h4>阻尼自适应与限位障碍函数</h4>
+  <div class="code-block mt-16">
+    <div class="code-header"><span class="code-lang">CUDA C++</span><span class="code-filename">cuda_v4_runner.cu — 阻尼自适应 + 限位障碍</span></div>
+    <pre><code class="language-cpp">// 阻尼自适应（无回滚策略）
+lambda *= (loss_new < loss_old) ? 0.5 : 2.0;   // ↓ or ↑
+lambda = cuda_clamp(lambda, 1e-6, 0.5);        // 范围约束
+// 总是接受试探解（无回滚）→ 降低 GPU 控制流复杂度
+
+// 关节限位二次障碍函数
+// Phi = Σ_j max(0, m-(q_j - q_min))² + max(0, m-(q_max - q_j))²
+// 安全裕度 m = 0.087 rad ≈ 5°
+// 权重 w_limit = 0.03（辅助安全裕度，不主导主 IK 收敛方向）
+
+// 解析梯度直接叠加至正规方程右端项
+grad[j] += -2.0 * (kLimitMargin - (q[j] - lo));  // 下限方向
+grad[j] +=  2.0 * (kLimitMargin - (hi - q[j]));  // 上限方向</code></pre>
+  </div>
+
+  <!-- 5.4 Layer 3: Shared Memory Selection -->
+  <h3 style="margin-top:48px;">5.4 第四层：共享内存候选选择</h3>
+
+  <figure>
+    <img src="assets/figures/单个block内部执行流程.png" alt="单个线程块内部执行流程" loading="lazy">
+    <figcaption>图 2：单个线程块内部执行流程 — Lane 0–15 各承载一个 Sobol 种子独立求解 → 共享内存候选缓冲 → __syncthreads() → Lane 0 三级层次化选择 → 最优解写回全局内存</figcaption>
+  </figure>
+
+  <h4>Target-Block 映射策略</h4>
+  <div class="callout callout-info">
+    <strong>启动配置：</strong><code>&lt;&lt;&lt;dim3(N, 1, 1), dim3(32, 1, 1)&gt;&gt;&gt;</code><br>
+    N 个目标位姿 → N 个线程块，一一映射。每块 32 线程（1 个 warp），Lane 0–15 承载 K=16 个 Sobol 低差异种子，Lane 16–31 空闲。每个目标的计算<strong>完全局部化于一个 SM 内</strong>——无跨块通信、无全局同步。<strong>内核函数启动次数恒为 1</strong>，与 N 和 K 无关。
+  </div>
+
+  <h4>核心核函数源码（精选关键部分）</h4>
+  <div class="code-block">
+    <div class="code-header"><span class="code-lang">CUDA C++</span><span class="code-filename">cuda_v4_runner.cu:695–743 — ik_lm_multiseed_v4_block_target_kernel()</span></div>
+    <pre><code class="language-cpp">__global__ void ik_lm_multiseed_v4_block_target_kernel(
+    const double* targets, const double* seeds,
+    double* best, int N, int K, int max_iter,
+    int limit_gradient_mode, int precision_mode,
+    int fallback_mode, int* fallback_count) {
+
+  int target_id = blockIdx.x;    // 目标索引 = Block ID
+  int seed_id   = threadIdx.x;   // 种子索引 = Lane ID
+
+  // 共享内存候选缓冲：16 候选 × 16 doubles = ~2 KB
+  __shared__ double s_cand[16 * kCandidateStride];
+
+  // === 阶段 1：并行求解（Lane 0–15） ===
+  if (seed_id < 16) {
+    double* c = s_cand + seed_id * kCandidateStride;
+    if (seed_id < K) {
+      solve_candidate_v4(          // 完整 LM 迭代求解
+          targets + target_id * 16,
+          seeds + (target_id * K + seed_id) * 6,
+          max_iter, limit_gradient_mode, precision_mode, c);
+    }
+  }
+  __syncthreads();  // 等待全部 16 lane 候选写入完成
+
+  // === 阶段 2：层次化选择（仅 Lane 0） ===
+  if (threadIdx.x == 0) {
+    int best_k = 0, best_rank = 4, best_near = 2;
+    double best_pose = 1e300;
+
+    for (int k = 0; k < K && k < 16; ++k) {
+      const double* c = s_cand + k * kCandidateStride;
+      // 四级优先级排序
+      if (candidate_better_v4(c, k,
+              best_rank, best_near, best_pose, best_k)) {
+        best_rank = candidate_rank_v4(c);  // ① 成功等级
+        best_near = c[15] > 0.5 ? 1 : 0;   // ② 近限位标志
+        best_pose = c[8];                  // ③ 位姿代价
+        best_k = k;                        // ④ seed_id
+      }
+    }
+    // 最优候选从共享内存写回全局内存
+    write_best_from_candidate_v4(
+        s_cand + best_k * kCandidateStride, best_k,
+        best + target_id * kBestStride);
+  }
+}</code></pre>
+  </div>
+
+  <h4>四级候选排序规则</h4>
+  <div class="code-block mt-16">
+    <div class="code-header"><span class="code-lang">CUDA C++</span><span class="code-filename">cuda_v4_runner.cu:393–403 — candidate_better_v4()</span></div>
+    <pre><code class="language-cpp">// 候选 c_a 优于 c_b 当且仅当满足以下任一条件：
+__device__ __forceinline__ bool candidate_better_v4(
+    const double* c, int seed_id,
+    int best_rank, int best_near, double best_pose, int best_seed) {
+
+  int rank = candidate_rank_v4(c);  // Strict=0 > Medium=1 > Loose=2 > Fail=3
+  int near = c[15] > 0.5 ? 1 : 0;  // 0 = 非近限位 > 1 = 近限位
+  double pose = c[8];               // 位姿代价
+
+  // 优先级 1: 成功等级（低优）
+  return rank < best_rank ||
+  // 优先级 2: 近限位状态（非近限位优）
+    (rank == best_rank && near < best_near) ||
+  // 优先级 3: 位姿代价（低优）
+    (rank == best_rank && near == best_near && pose < best_pose) ||
+  // 优先级 4: 种子编号（低优，确定性平局打破）
+    (rank == best_rank && near == best_near && pose == best_pose
+     && seed_id < best_seed);
+}</code></pre>
+  </div>
+
+  <div class="callout callout-success mt-16">
+    <strong>架构优势总结：</strong>候选解从生成到选择的全生命周期限制在<strong>共享内存（片上 SRAM）</strong>内，全局内存仅接收<strong>最终选定的最优解</strong>（N×18 doubles）。对比多内核函数方案需将 N×K 个候选完整写回全局内存（~2 MB for N=1000, K=16），<strong>全局内存写入量减少约 14 倍</strong>。
+  </div>
+
+  <!-- 5.5: HW Architecture Mapping -->
+  <figure style="margin-top:32px;">
+    <img src="assets/figures/GPU计算架构与内存层次结构.png" alt="GPU 计算架构与内存层次结构" loading="lazy">
+    <figcaption>图 3：GPU 计算架构与内存层次结构 — 运动学常量驻留在常量内存中供所有 Block 广播访问；目标位姿和种子通过全局内存读入；候选解暂存于共享内存供块内选择</figcaption>
+  </figure>
+
+  <figure>
+    <img src="assets/figures/机械臂在cuda上面的求解.png" alt="机械臂 IK 在 CUDA 架构上的求解流程" loading="lazy">
+    <figcaption>图 4：机械臂 IK 问题在 CUDA 架构上的完整求解映射 — 从输入目标位姿到最终候选解输出的数据流与计算阶段</figcaption>
+  </figure>
+
+  <h3 style="margin-top:48px;">5.5 关键性能结果</h3>
+  <div style="overflow-x:auto;">
+  <table class="data-table">
+    <tr><th>N</th><th>GPU 时间 (ms)</th><th>吞吐量 (t/s)</th><th>Strict SR</th><th>p95 (mm)</th><th>平均迭代</th></tr>
+    <tr><td>100</td><td>6.658</td><td>15,019</td><td>0.960</td><td>4.38</td><td>21.0</td></tr>
+    <tr><td>300</td><td>19.334</td><td>15,517</td><td>0.940</td><td>27.04</td><td>20.0</td></tr>
+    <tr><td>500</td><td>28.837</td><td>17,339</td><td>0.954</td><td>4.34</td><td>20.0</td></tr>
+    <tr><td>700</td><td>39.329</td><td>17,799</td><td>0.953</td><td>4.78</td><td>19.5</td></tr>
+    <tr class="highlight-row"><td><strong>1,000</strong></td><td><strong>54.868</strong></td><td><strong>18,226</strong></td><td><strong>0.954</strong></td><td><strong>4.56</strong></td><td><strong>19.0</strong></td></tr>
+  </table>
+  </div>
+
+  <div class="callout callout-info mt-16">
+    <strong>关键发现：</strong>
+    <ul style="margin-top:8px;padding-left:20px;">
+      <li>GPU 流时间与 N <strong>严格线性</strong>（R² &gt; 0.999，斜率 0.0549 ms/target）— 验证了 target-block 映射的结构确定性</li>
+      <li>H2D + D2H + kernel launch 合计仅占 GPU 流时间的 <strong>0.274%</strong>（N=1000 时约 150 μs）</li>
+      <li>吞吐量从 N=100 到 N=1000 仅提升 21% — 符合 Amdahl 定律：Lane 0 串行候选选择（~0.005 ms/target）构成不可并行的串行分量</li>
+    </ul>
+  </div>
+
+</section>
+</div></div>
+
+<!-- ==================== Block 6: 实验结果深度分析 ==================== -->
+<section class="section" id="results">
+  <div class="section-header">
+    <div class="section-number">Section 06</div>
+    <h2>实验结果深度分析</h2>
+    <p>消融实验 · 公平对比 · 帕累托前沿 · 微架构瓶颈</p>
+  </div>
+
+  <h3>6.1 SAKF-IK vs cuRobo 公平对比（同种子数 K=16）</h3>
+  <div style="overflow-x:auto;">
+  <table class="data-table">
+    <tr><th>N</th><th>方法</th><th>K</th><th>Strict SR</th><th>吞吐 (×10⁴ t/s)</th><th>全样本 p95 (mm)</th><th>成功 p95 (mm)</th></tr>
+    <tr class="highlight-row"><td>1,000</td><td><strong>SAKF-IK</strong></td><td>16</td><td><strong>0.954</strong></td><td><strong>1.823</strong></td><td><strong>4.56</strong></td><td><strong>2.55</strong></td></tr>
+    <tr><td>1,000</td><td>cuRobo-Graph</td><td>16</td><td>0.988</td><td>1.040</td><td>0.88</td><td>0.42</td></tr>
+    <tr><td>1,000</td><td>SAKF-IK</td><td>1</td><td>0.522</td><td>2.786</td><td>685.01</td><td>4.61</td></tr>
+    <tr><td>1,000</td><td>cuRobo-Graph</td><td>1</td><td>0.840</td><td>7.262</td><td>88.67</td><td>0.28</td></tr>
+  </table>
+  </div>
+
+  <div class="callout callout-info mt-16">
+    <strong>帕累托前沿定位：</strong>三方对比确立了清晰的帕累托前沿——<strong>cuRobo K=16</strong> 位于高精度端（SR 0.988, p95 0.88 mm）；<strong>cuRobo K=1</strong> 位于吞吐优先端（72,620 t/s 但 SR 0.84）；<strong>SAKF-IK K=16</strong> 位于满足 5 mm/1° 工程精度阈值前提下的<strong>吞吐优先拐点</strong>（SR 0.954, 18,226 t/s, 1.75× cuRobo K=16 吞吐）。
+  </div>
+
+  <figure>
+    <img src="assets/figures/fig3_static_performance.png" alt="吞吐率与成功率对比" loading="lazy">
+    <figcaption>图 5：同种子数 K=16 条件下吞吐率与成功率对比 — SAKF-IK 以 1.75× 吞吐优势位于 cuRobo K=16 的左侧</figcaption>
+  </figure>
+
+  <h3 style="margin-top:32px;">6.2 多起点策略消融（K=1 vs K=16）</h3>
+  <div style="overflow-x:auto;">
+  <table class="data-table">
+    <tr><th>N</th><th>K=16 SR</th><th>K=1 SR</th><th>K=16 p95 (mm)</th><th>K=1 p95 (mm)</th></tr>
+    <tr><td>100</td><td>0.960</td><td>0.450</td><td>4.38</td><td>642.2</td></tr>
+    <tr><td>500</td><td>0.954</td><td>0.502</td><td>4.34</td><td>686.2</td></tr>
+    <tr class="highlight-row"><td>1,000</td><td><strong>0.954</strong></td><td><strong>0.522</strong></td><td><strong>4.56</strong></td><td><strong>685.0</strong></td></tr>
+  </table>
+  </div>
+
+  <div class="callout callout-warn mt-16">
+    <strong>关键事实：</strong>成功率主要来源于多起点策略。K=16 时 SR 稳定在 0.95 以上，K=1 时骤降至 0.45–0.52——降低约 <strong>43–51 个百分点</strong>。16 个 Sobol 低差异起点有效覆盖了不同 IK 分支和局部极小。但内核函数启动次数始终为 1，与种子数无关。
+  </div>
+
+  <h3 style="margin-top:32px;">6.3 微架构瓶颈分析</h3>
+  <div class="cards-grid cards-2">
+    <div class="card">
+      <h4>寄存器压力</h4>
+      <table class="data-table" style="font-size:.78rem;">
+        <tr><th>寄存器限制</th><th>寄存器/线程</th><th>溢出存储</th></tr>
+        <tr><td>无限制</td><td><strong>194</strong></td><td>0 B</td></tr>
+        <tr><td>160</td><td>160</td><td>216 B</td></tr>
+        <tr><td>128</td><td>128</td><td>568 B</td></tr>
+      </table>
+      <p style="font-size:.8rem;margin-top:8px;">RTX 4060: 65,536 寄存器/SM，理论占用率 ~44%。中等占用率表明瓶颈<strong>不是</strong>全局内存带宽。</p>
+    </div>
+    <div class="card">
+      <h4>Nsight Compute 动态指标 (N=1000)</h4>
+      <table class="data-table" style="font-size:.78rem;">
+        <tr><th>指标</th><th>实测值</th></tr>
+        <tr><td>Warp Stall Long Scoreboard</td><td><strong>83.2%</strong></td></tr>
+        <tr><td>Issue Slot Utilization</td><td>2.32%</td></tr>
+        <tr><td>Compute (SM) Throughput</td><td>84.2%</td></tr>
+        <tr><td>Memory Throughput</td><td><strong>3.71%</strong></td></tr>
+      </table>
+      <p style="font-size:.8rem;margin-top:8px;">Memory Throughput 仅 3.71% 确认<strong>非访存瓶颈</strong>。瓶颈来自 FP64 小矩阵求解、三角函数和标量寄存器操作的长延迟依赖。</p>
+    </div>
+  </div>
+
+  <div class="callout callout-info mt-16">
+    <strong>浮点吞吐利用率：</strong>实际 FP64 吞吐约 0.60 GFLOPS，仅为 RTX 4060 理论峰值的 0.33%。极低的浮点利用率是小矩阵 GPU 计算的普遍特征——大量标量寄存器操作、超越函数（sin/cos/sqrt/atan2）和控制流指令限制了指令级并行度。这也是混合精度实验（FP32 J/H）仅带来 2% 吞吐提升的原因。
+  </div>
+
+  <figure>
+    <img src="assets/figures/fig6_robustness_boundary.png" alt="近奇异与近限位场景边界分析" loading="lazy">
+    <figcaption>图 6：近奇异与近限位场景边界分析 — 腕部/肩部奇异下保持较高成功率，肘部奇异 SR 降至 0.883</figcaption>
+  </figure>
+</section>
+
+<!-- ==================== Block 7: 总结 ==================== -->
+<div class="section-alt"><div class="section-inner">
+<section class="section" id="summary">
+  <div class="section-header">
+    <div class="section-number">Section 07</div>
+    <h2>总结与贡献</h2>
+    <p>SAKF-IK 的核心贡献与未来方向</p>
+  </div>
+
+  <div class="steps">
+    <div class="step">
+      <h4>Sobol 多起点与核函数融合协同设计</h4>
+      <p>K=16 个 Sobol 低差异种子、解析雅可比、迭代求解和块内候选选择融合于单个目标块核函数。内核函数启动次数恒为 1，与种子数无关。严格成功率从 K=1 的 0.522 提升至 K=16 的 0.954。</p>
+    </div>
+    <div class="step">
+      <h4>融合正运动学函数</h4>
+      <p>单次前向传播同步输出末端位姿、关节世界位置和关节世界转轴方向三个层次的几何量。解析雅可比由 6 次叉积组装，每迭代 FK 调用从有限差分的多次扰动降至 1 次结构化评估。</p>
+    </div>
+    <div class="step">
+      <h4>寄存器级 6×6 小矩阵高斯消元</h4>
+      <p>以"专器专用"替代通用大矩阵库——全部 42 个 double 中间变量保持在寄存器中（~216 标量运算，~0.05 μs），消除 cuBLAS/cuSOLVER 的 ~2–10 μs 接口调度开销（<strong>40–200× 加速</strong>）。</p>
+    </div>
+    <div class="step">
+      <h4>帕累托前沿定位</h4>
+      <p>同等 K=16 种子下，cuRobo SR 0.988 位于高精度端，SAKF-IK SR 0.954 满足工程阈值且<strong>吞吐量为其 1.75 倍</strong>。三方对比确立了本方法在质量-吞吐量帕累托前沿上的"满足 Strict 阈值前提下的吞吐优先"拐点位置。</p>
+    </div>
+    <div class="step">
+      <h4>边界条件验证</h4>
+      <p>腕部和肩部奇异下保持较高成功率；肘部奇异 SR 降至 0.883；限位正则主要作为安全裕度约束而非收敛加速手段。轨迹连续性需进一步研究。</p>
+    </div>
+  </div>
+
+  <h3 style="margin-top:40px;text-align:center;">系统级对比总结</h3>
+  <div style="overflow-x:auto;">
+  <table class="data-table">
+    <tr><th>技术指标</th><th>SAKF-IK（四层单核融合）</th><th>cuRobo-Graph-K16（多内核+通用库）</th></tr>
+    <tr><td>系统架构</td><td><strong>四层单核函数融合</strong></td><td>多内核函数 + 通用库调用</td></tr>
+    <tr><td>Strict 成功率</td><td>0.954</td><td><strong>0.988</strong></td></tr>
+    <tr><td>原始吞吐量 (t/s)</td><td><strong>18,226</strong></td><td>10,400</td></tr>
+    <tr><td>6×6 线性系统求解</td><td><strong>寄存器级高斯消元 (~0.05 μs)</strong></td><td>cuBLAS/cuSOLVER (~2–10 μs)</td></tr>
+    <tr><td>层间数据中转</td><td><strong>片上存储（寄存器/共享内存/常量缓存）</strong></td><td>全局内存（片外 DRAM）</td></tr>
+    <tr><td>全局内存写入量</td><td><strong>N×18 doubles（仅最优解）</strong></td><td>N×K×16 + N×18 doubles</td></tr>
+    <tr><td>结构参数存储</td><td><strong>常量内存（~1 cycle 广播）</strong></td><td>全局内存（~200–800 cycles）</td></tr>
+    <tr><td>调度开销占比</td><td><strong>&lt; 0.3%</strong></td><td>显著（多次 kernel launch）</td></tr>
+    <tr><td>GPU 通用库依赖</td><td><strong>零依赖</strong></td><td>依赖 cuBLAS/cuSOLVER</td></tr>
+  </table>
+  </div>
+
+  <h3 style="margin-top:40px;text-align:center;">参考文献</h3>
+  <div style="font-size:.85rem;color:var(--text-2);column-count:2;column-gap:32px;margin-top:16px;">
+    <p>[1] Siciliano B, Sciavicco L, Villani L, et al. Robotics: Modelling, Planning and Control. Springer, 2010.</p>
+    <p>[2] Lynch K M, Park F C. Modern Robotics. Cambridge University Press, 2017.</p>
+    <p>[3] Sundaralingam B, et al. cuRobo: Parallelized Collision-Free Robot Motion Generation. arXiv:2310.17274, 2023.</p>
+    <p>[4] Yasutake C, Kingston Z, Plancher B. HJCD-IK: GPU-Accelerated Inverse Kinematics. arXiv:2510.07514, 2025.</p>
+    <p>[5] Domrachev I, Nedelchev S. mjinx: Differentiable GPU-Accelerated IK in JAX. 2025.</p>
+    <p>[6] Thomason W, Kingston Z, Kavraki L E. Motions in Microseconds via Vectorized Sampling-Based Planning. ICRA 2024.</p>
+    <p>[7] NVIDIA. CUDA C++ Programming Guide. docs.nvidia.com/cuda/, 2026.</p>
+    <p>[8] Levenberg K. A Method for the Solution of Certain Non-Linear Problems in Least Squares. Q. Appl. Math., 1944.</p>
+    <p>[9] Marquardt D W. An Algorithm for Least-Squares Estimation of Nonlinear Parameters. SIAM, 1963.</p>
+    <p>[10] Sobol I M. On the Distribution of Points in a Cube. USSR Comput. Math. Math. Phys., 1967.</p>
+    <p>[11] NVIDIA. CUDA C++ Best Practices Guide. docs.nvidia.com/cuda/, 2026.</p>
+    <p>[12] Aboelnasr M I M. ManipulaPy: GPU-Accelerated Python Framework. JOSS, 2025.</p>
+    <p>[13] Du A, et al. GATO: GPU-Accelerated Batched Trajectory Optimization. arXiv:2510.07625, 2025.</p>
+    <p>[14] Hsiao Y S, et al. VaPr: Variable-Precision Tensors to Accelerate Robot Motion Planning. IROS 2023.</p>
+  </div>
+</section>
+</div></div>
+
+<!-- Footer -->
+<footer class="site-footer">
+  <p>SAKF-IK — Structure-Aware Kernel Fusion for Inverse Kinematics</p>
+  <p>刘霄鹏 · 武汉科技大学 机械工程学院 · 2026</p>
+  <p style="margin-top:8px;">
+    <a href="https://github.com/Cagedcarrow/cuda_ik_accelerateion">GitHub Repository</a>
+  </p>
+</footer>
+
+<button class="back-to-top" id="back-to-top" aria-label="Back to top">↑</button>
+
+<script src="assets/runtime.js"></script>
+</body>
+</html>
